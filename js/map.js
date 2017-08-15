@@ -35,27 +35,27 @@ var timeSelection = {};
  */
 function f_initWMSLayer(url, layer, title, visible, opacity, type, timeEnabled) {
     //initialize ol WMS layer
-    var wmsLayer = new ol.layer.Image ({
+    var wmsLayer = new ol.layer.Image({
         title: title,
         visible: visible,
         type: type,
         opacity: opacity,
-        source: new ol.source.ImageWMS ({
+        source: new ol.source.ImageWMS({
             url: url,
-            params: {'FORMAT': 'image/png', 'VERSION': '1.3.0', 'STYLES': '', 'LAYERS': layer }
+            params: {'FORMAT': 'image/png', 'VERSION': '1.3.0', 'STYLES': '', 'LAYERS': layer}
         })
     });
     //get capabilities document
     capabilities[layer] = f_getCapabilities(url, layer, timeEnabled);
     //add layer to corresponding collection
-    if(type === 'base')
+    if (type === 'base')
         baseLayers[layer] = wmsLayer;
     else
         overlays[layer] = wmsLayer;
 }
 
-function f_initGeoJSONLayer(url, style, title, visible){
-    return new ol.layer.Vector ({
+function f_initGeoJSONLayer(url, style, title, visible) {
+    return new ol.layer.Vector({
         title: title,
         visible: visible,
         source: new ol.source.Vector({
@@ -77,21 +77,21 @@ function f_getCapabilities(url, layer, timeEnabled) {
     var request = url + 'service=wms&request=getCapabilities';
     var xhr = new XMLHttpRequest();
     xhr.open('GET', request, true);
-    xhr.onload = function() {
+    xhr.onload = function () {
         if (xhr.status === 200) {
             var capabilities = parser.read(xhr.responseXML);
             var wmsTopLayer = capabilities.Capability.Layer;
             var wmsLayer = f_getLayerByName(wmsTopLayer.Layer, layer);
-            if(wmsLayer === null)
+            if (wmsLayer === null)
                 return;
             //get dimension
             capabilities[layer] = wmsLayer;
-            if(timeEnabled) {
+            if (timeEnabled) {
                 f_initTimeDimesion(wmsLayer, layer);
                 //change visibility of time selection
-                wmsLayer.on('change:visible', function(){
+                wmsLayer.on('change:visible', function () {
                     //set visibility for time selection
-                    if(this.getVisible())
+                    if (this.getVisible())
                         $(timeSelection[layer].div_selector).removeClass('hidden');
                     else
                         $(timeSelection[layer].div_selector).addClass('hidden');
@@ -114,7 +114,7 @@ function f_initTimeDimesion(wmsLayer, layer) {
     f_displayTimeSelection(layer);
     //get dimension
     var dimension = f_getDimension(wmsLayer, "time")
-    if(dimension === null)
+    if (dimension === null)
         return;
     var defaultValue = dimension.default;
     var values = dimension.values;
@@ -134,7 +134,7 @@ function f_getLayerByName(wmsLayers, layer) {
             return wmsLayers[i];
         else if (wmsLayers[i].Layer !== undefined) {
             var wmsLayer = f_getLayerByName(wmsLayers[i].Layer, layer);
-            if(wmsLayer !== null)
+            if (wmsLayer !== null)
                 return wmsLayer;
         }
     }
@@ -147,12 +147,12 @@ function f_getLayerByName(wmsLayers, layer) {
  * @param name dimension name
  * @returns time dimension
  */
-function f_getDimension(wmsLayer, name){
-    if(wmsLayer.Dimension === null)
+function f_getDimension(wmsLayer, name) {
+    if (wmsLayer.Dimension === null)
         return null;
     var numberOfDimensions = wmsLayer.Dimension.length;
     for (var i = 0; i < numberOfDimensions; i++) {
-        if(wmsLayer.Dimension[i].name === name)
+        if (wmsLayer.Dimension[i].name === name)
             return wmsLayer.Dimension[i];
     }
 }
@@ -241,7 +241,7 @@ function f_initTimeSelector(layer) {
         'selected': null
     };
     timeSelection[layer].filteredValues = [];
-    timeSelection[layer].isComplete = function() {
+    timeSelection[layer].isComplete = function () {
         return timeSelection[layer].filteredValues.length === 1;
     };
 }
@@ -252,12 +252,12 @@ function f_initTimeSelector(layer) {
  * @param index dimension index (0 = year, 1 = month, 2 = day, 3 = hours, 4 = minutes)
  * @param value value to be selected
  */
-function f_setTimeSelection(layer, index, value){
-    if(timeSelection[layer].selection[index].selected === value)
+function f_setTimeSelection(layer, index, value) {
+    if (timeSelection[layer].selection[index].selected === value)
         return;
     timeSelection[layer].selection[index].selected = value;
     timeSelection[layer].filteredValues = f_filterTimeValues(layer);
-    if(timeSelection[layer].isComplete() === true)
+    if (timeSelection[layer].isComplete() === true)
         overlays[layer].getSource().updateParams({'TIME': timeSelection[layer].filteredValues[0].toISOString()});
 }
 
@@ -267,7 +267,7 @@ function f_setTimeSelection(layer, index, value){
  * @returns escaped selector
  */
 function f_jQueryEscape(selector) {
-    return selector.replace( /([:.\[])/g, "\\$1" );
+    return selector.replace(/([:.\[])/g, "\\$1");
 }
 
 /**
@@ -276,7 +276,7 @@ function f_jQueryEscape(selector) {
  * @param values string of time values
  * @param defaultValue default time value
  */
-function f_initTimeSelection(layer, values, defaultValue){
+function f_initTimeSelection(layer, values, defaultValue) {
     //parse date values
     timeValues[layer] = f_getDateArray(values, ",");
     //get array of available years
@@ -284,8 +284,8 @@ function f_initTimeSelection(layer, values, defaultValue){
     //start with selection of year, if defaultTime is null
     var defaultTime = new Date(defaultValue);
     //set first value as default, if defaultValue === 'current'
-    if(defaultTime instanceof Date && !isNaN(defaultTime.valueOf())) {
-        for(var i=0; i<timeSelection[layer].selection.length; i++){
+    if (defaultTime instanceof Date && !isNaN(defaultTime.valueOf())) {
+        for (var i = 0; i < timeSelection[layer].selection.length; i++) {
             f_updateTimeSelection(layer, i, defaultTime[timeSelection[layer].selection[i].utcFunction]());
         }
     }
@@ -305,7 +305,7 @@ function f_getDateArray(values, separator) {
     var dArray = [];
     for (var i = 0; i < sArray.length; i++) {
         var date = new Date(sArray[i]);
-        if(date !== null)
+        if (date !== null)
             dArray.push(date);
     }
     return dArray;
@@ -317,15 +317,15 @@ function f_getDateArray(values, separator) {
  * @param dateFunction date funtino to extract sub-element
  * @returns {Array} date sub-elements
  */
-function f_getDateElementArray(dArray, dateFunction){
+function f_getDateElementArray(dArray, dateFunction) {
     var dateElements = [];
     for (var i = 0; i < dArray.length; i++) {
         var date = dArray[i];
         var dateElement = date[dateFunction]();
-        if(dateElements.indexOf(dateElement) === -1)
+        if (dateElements.indexOf(dateElement) === -1)
             dateElements.push(dateElement);
     }
-    dateElements.sort(function(a, b) {
+    dateElements.sort(function (a, b) {
         return a - b;
     });
     return dateElements;
@@ -343,10 +343,10 @@ function f_filterTimeValues(layer) {
         var filter = true;
         for (var j = 0; j < timeSelection[layer].selection.length; j++) {
             var selected = timeSelection[layer].selection[j].selected;
-            if(selected !== null && timestamp[timeSelection[layer].selection[j].utcFunction]() !== selected)
+            if (selected !== null && timestamp[timeSelection[layer].selection[j].utcFunction]() !== selected)
                 filter = false;
         }
-        if(filter)
+        if (filter)
             filteredValues.push(timestamp);
     }
     return filteredValues;
@@ -360,19 +360,19 @@ function f_filterTimeValues(layer) {
  */
 function f_updateTimeSelection(layer, index, selectedValue) {
     //remove selection for this and higher indices
-    for(var i=index; i<timeSelection[layer].selection.length; i++){
+    for (var i = index; i < timeSelection[layer].selection.length; i++) {
         f_unselectTime(layer, i);
     }
     //set selected value, if there is only one element to select
-    if(selectedValue === null && timeSelection[layer].selection[index].values.length === 1)
+    if (selectedValue === null && timeSelection[layer].selection[index].values.length === 1)
         selectedValue = timeSelection[layer].selection[index].values[0];
     //set current selection
     var timeSelectionDiv = $(timeSelection[layer].selection[index].div_selector);
     f_setTimeSelection(layer, index, selectedValue);
     //add child elements with possible time values
-    for (i=0; i < timeSelection[layer].selection[index].values.length; i++) {
+    for (i = 0; i < timeSelection[layer].selection[index].values.length; i++) {
         var value = timeSelection[layer].selection[index].values[i];
-        if(selectedValue !== null && value !== selectedValue)
+        if (selectedValue !== null && value !== selectedValue)
             continue;
         var valueDiv = $('<div class="time_element' +
             (value === selectedValue ? ' time_element_selected' : '') +
@@ -384,7 +384,7 @@ function f_updateTimeSelection(layer, index, selectedValue) {
     //set style to selected
     timeSelectionDiv.parent().find('.time_label').addClass('time_label_active');
     //display child elements, if selectedValue is not null
-    if(selectedValue !== null && timeSelection[layer].selection[index + 1] !== void 0) {
+    if (selectedValue !== null && timeSelection[layer].selection[index + 1] !== void 0) {
         timeSelection[layer].selection[index + 1].values = f_getDateElementArray(timeSelection[layer].filteredValues, timeSelection[layer].selection[index + 1].utcFunction);
         f_updateTimeSelection(layer, index + 1, null);
     }
@@ -398,7 +398,7 @@ function f_updateTimeSelection(layer, index, selectedValue) {
  */
 function f_getTimeValueDisplay(index, value) {
     //increase month number to set range from [0,11] to [1,12]
-    if(index === 1)
+    if (index === 1)
         return value + 1;
     return value;
 }
@@ -420,13 +420,19 @@ function f_unselectTime(layer, index) {
  *
  *****************************************************/
 
-var style_ezg = new ol.style.Style({stroke: new ol.style.Stroke({color:'#0070C0',width:1}), fill: new ol.style.Fill({color:'rgba(0,112,192,0.5)'})})
-var style_ezg_highlight = new ol.style.Style({stroke: new ol.style.Stroke({color:'#DD2222',width:1}), fill: new ol.style.Fill({color:'rgba(221,34,34,0.3)'})})
+var style_ezg = new ol.style.Style({
+    stroke: new ol.style.Stroke({color: '#0070C0', width: 1}),
+    fill: new ol.style.Fill({color: 'rgba(0,112,192,0.5)'})
+})
+var style_ezg_highlight = new ol.style.Style({
+    stroke: new ol.style.Stroke({color: '#DD2222', width: 1}),
+    fill: new ol.style.Fill({color: 'rgba(221,34,34,0.3)'})
+})
 
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
 
-baseLayers['OpenStreetMap'] = new ol.layer.Tile({ title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM() });
+baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM()});
 
 f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?", "sn_dop_020", "Orthophoto (GeoSN)", false, 1, 'base', false);
 f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest?", "Gelaendehoehe", "Höhenmodell (GeoSN)", false, 1, 'base', false);
@@ -441,7 +447,7 @@ f_initWMSLayer("https://maps.dwd.de/geoserver/ows?", "dwd:FX-Produkt", "Radarvor
 var layer_ezg_extruso = f_initGeoJSONLayer("https://extruso.bu.tu-dresden.de/sites/default/files/geodata/EZG_gesamt.geojson", style_ezg, "Pilot-Einzugsgebiete", false);
 var layer_ezg_extruso_highlight;
 
-var default_view = new ol.View({ projection: projection, center: center, zoom: 10 });
+var default_view = new ol.View({projection: projection, center: center, zoom: 10});
 
 var map = new ol.Map({
     controls: ol.control.defaults().extend([
@@ -450,11 +456,15 @@ var map = new ol.Map({
     layers: [
         new ol.layer.Group({
             title: 'Kartengrundlage',
-            layers: Object.keys(baseLayers).map(function (key) { return baseLayers[key]; })
+            layers: Object.keys(baseLayers).map(function (key) {
+                return baseLayers[key];
+            })
         }),
         new ol.layer.Group({
             title: 'Overlays',
-            layers: Object.keys(overlays).map(function (key) { return overlays[key]; })
+            layers: Object.keys(overlays).map(function (key) {
+                return overlays[key];
+            })
         })
     ],
     target: 'map',
@@ -468,8 +478,8 @@ var layer_ezg_extruso_overlay = new ol.layer.Vector({
 });
 
 //TODO: generalize for vector data
-var displayEZGInfo = function(pixel) {
-    var feature = map.forEachFeatureAtPixel(pixel, function(feature) {
+var displayEZGInfo = function (pixel) {
+    var feature = map.forEachFeatureAtPixel(pixel, function (feature) {
         return feature;
     });
     var info = document.getElementById('info');
@@ -492,15 +502,13 @@ var displayEZGInfo = function(pixel) {
     }
 };
 
-map.on('pointermove', function(evt) {
+map.on('pointermove', function (evt) {
     if (evt.dragging || layer_ezg_extruso.visible === false) {
         return;
     }
     var pixel = map.getEventPixel(evt.originalEvent);
     displayEZGInfo(pixel);
 });
-
-
 
 
 // $(function() {

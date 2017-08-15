@@ -1,7 +1,7 @@
 /**
  * load navigation
  */
-$(function(){
+$(function () {
     $("#navigation").append("<header>\n" +
         "    <div id=\"logo\">EXTRUSO</div>\n" +
         "    <nav class=\"site-navigation\">\n" +
@@ -18,7 +18,7 @@ $(function(){
 /**
  * load footer
  */
-$(function(){
+$(function () {
     $("#footer").append("<footer>\n" +
         "   <div class=\"content white\" style=\"line-height: 4em;text-align: center;\">\n" +
         "       &copy; EXTRUSO Projekt\n" +
@@ -29,7 +29,7 @@ $(function(){
 /**
  * load funding info
  */
-$(function(){
+$(function () {
     $("#funding").append("<div class=\"content container\">\n" +
         "    <div class=\"flex-container\">\n" +
         "       <div class=\"flex-item-fun\"><img src=\"/xtruso_web/img/logo-extruso.png\" style=\"height: 100px;\"></div>\n" +
@@ -42,7 +42,7 @@ $(function(){
 /**
  * expand/collapse article content
  */
-$(function(){
+$(function () {
     $(".article_title").click(function () {
         var $title = $(this);
         var $content = $title.next();

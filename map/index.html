@@ -1,62 +1,63 @@
 <!DOCTYPE html>
 <html lang="de">
 
-    <head>
+<head>
 
-        <meta charset="utf-8">
-        <meta http-equiv="x-ua-compatible" content="ie=edge">
-        <title>EXTRUSO Kartenanwendung</title>
-        <link rel="icon" href="/xtruso_web/img/favicon.ico">
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>EXTRUSO Kartenanwendung</title>
+    <link rel="icon" href="/xtruso_web/img/favicon.ico">
 
-        <meta name="description" content="EXTRUSO Kartenanwendung">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="EXTRUSO Kartenanwendung">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <link rel="stylesheet" href="../css/normalize.css">
-        <link rel="stylesheet" href="../css/main.css">
-        <link rel="stylesheet" href="../css/map.css">
-        <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-        <link rel="stylesheet" type="text/css" href="https://openlayers.org/en/v4.2.0/css/ol.css" />
-        <link rel="stylesheet" href="https://rawgit.com/walkermatt/ol3-layerswitcher/master/src/ol3-layerswitcher.css" />
-        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="../css/normalize.css">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/map.css">
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans"/>
+    <link rel="stylesheet" type="text/css" href="https://openlayers.org/en/v4.2.0/css/ol.css"/>
+    <link rel="stylesheet" href="https://rawgit.com/walkermatt/ol3-layerswitcher/master/src/ol3-layerswitcher.css"/>
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
 
-        <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js" type="text/javascript"></script>
-        <script>window.Modernizr || document.write('<script src="../js/vendor/modernizr-2.8.3.min.js"><\/script>');</script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js" type="text/javascript"></script>
+    <script>window.Modernizr || document.write('<script src="../js/vendor/modernizr-2.8.3.min.js"><\/script>');</script>
 
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
-        <script>window.jQuery || document.write('<script src="../js/vendor/jquery-1.12.4.min.js" type="text/javascript"><\/script>')</script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
+    <script>window.jQuery || document.write('<script src="../js/vendor/jquery-1.12.4.min.js" type="text/javascript"><\/script>')</script>
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 
-        <script src="../js/plugins.js" type="text/javascript"></script>
-        <script src="../js/main.js" type="text/javascript"></script>
+    <script src="../js/plugins.js" type="text/javascript"></script>
+    <script src="../js/main.js" type="text/javascript"></script>
 
-    </head>
+</head>
 
-    <body>
+<body>
 
-        <!--[if lt IE 8]>
-        <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
-        <![endif]-->
+<!--[if lt IE 8]>
+<p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade
+    your browser</a> to improve your experience.</p>
+<![endif]-->
 
-        <div id="navigation"></div>
+<div id="navigation"></div>
 
-        <div id="container_map">
+<div id="container_map">
 
-            <div id="container_time"></div>
-            <div id="map" ></div>
-            <div id="coord" ></div>
-            <div id="info" ></div>
+    <div id="container_time"></div>
+    <div id="map"></div>
+    <div id="coord"></div>
+    <div id="info"></div>
 
-        </div>
+</div>
 
-        <script src="//cdnjs.cloudflare.com/ajax/libs/ol3/4.2.0/ol.js" type="text/javascript"></script>
-        <script>window.ol || document.write('<script src="../js/vendor/ol-4.2.0.js" type="text/javascript"><\/script>')</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/ol3/4.2.0/ol.js" type="text/javascript"></script>
+<script>window.ol || document.write('<script src="../js/vendor/ol-4.2.0.js" type="text/javascript"><\/script>')</script>
 
-        <script src="//rawgit.com/walkermatt/ol3-layerswitcher/master/src/ol3-layerswitcher.js" type="text/javascript"></script>
-        <script>ol.control.LayerSwitcher || document.write('<script src="../js/vendor/ol3-layerswitcher.js" type="text/javascript"><\/script>')</script>
+<script src="//rawgit.com/walkermatt/ol3-layerswitcher/master/src/ol3-layerswitcher.js" type="text/javascript"></script>
+<script>ol.control.LayerSwitcher || document.write('<script src="../js/vendor/ol3-layerswitcher.js" type="text/javascript"><\/script>')</script>
 
-        <script src="../js/map.js" type="text/javascript"></script>
+<script src="../js/map.js" type="text/javascript"></script>
 
-    </body>
+</body>
 
 </html>

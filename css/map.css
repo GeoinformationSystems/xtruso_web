@@ -12,21 +12,24 @@
     z-index: -10;
 }
 
-#coord { font-size:0.9em; background-color:white; opacity:0.8; z-index:50; position:absolute; bottom:0.5em; left:0.5em; height:auto; visibility:hidden; }
-#info { font-size:0.9em; background-color:white; opacity:0.8; z-index:50; position:absolute; bottom:0.5em; left:0.5em; height:auto; padding:0 0.5em; border: 1px solid #0070C0; visibility:hidden; }
-.ol-zoom { top:5em!important; }
-.layer-switcher { top:6em!important; font-size:0.8em; }
+#coord { font-size: 0.9em; background-color: white; opacity: 0.8; z-index: 50; position: absolute; bottom: 0.5em; left: 0.5em; height: auto; visibility: hidden; }
+
+#info { font-size: 0.9em; background-color: white; opacity: 0.8; z-index: 50; position: absolute; bottom: 0.5em; left: 0.5em; height: auto; padding: 0 0.5em; border: 1px solid #0070C0; visibility: hidden; }
+
+.ol-zoom { top: 5em !important; }
+
+.layer-switcher { top: 6em !important; font-size: 0.8em; }
 
 #container_time {
-    bottom:3em;
-    right:0.5em;
-    position:absolute;
+    bottom: 3em;
+    right: 0.5em;
+    position: absolute;
     z-index: 10;
     margin: 1px;
- }
+}
 
 .container_time_layer {
-    margin-bottom:5px;
+    margin-bottom: 5px;
     clear: right;
     float: right;
 }
@@ -34,17 +37,17 @@
 .time_title {
     font-size: 0.8em;
     color: #003C88;
-    background-color: rgba(190,210,255,.5);
-    float:left;
+    background-color: rgba(190, 210, 255, .5);
+    float: left;
     padding-right: 0.5em;
 }
 
 .time_section {
-    float:right;
+    float: right;
 }
 
 .hidden {
-    display:none;
+    display: none;
 }
 
 .time_label {
@@ -52,10 +55,10 @@
 }
 
 .time_label_active {
-    border-left: 2px solid rgba(0,60,136,.7);
+    border-left: 2px solid rgba(0, 60, 136, .7);
     color: #003C88;
     display: block;
-    background-color: rgba(190,210,255,.5);
+    background-color: rgba(190, 210, 255, .5);
     margin-left: 2px;
     font-size: 0.8em;
     padding-left: 0.3em;
@@ -67,24 +70,23 @@
     font-size: 0.8em;
 }
 
-
 .time_element {
     padding: 0.3em;
     font-size: 0.8em;
-    border: 2px solid rgba(255,255,255,.8);
+    border: 2px solid rgba(255, 255, 255, .8);
     color: white;
-    background-color: rgba(0,60,136,.5);
+    background-color: rgba(0, 60, 136, .5);
     float: left;
     cursor: pointer;
     border-radius: 4px;
 }
 
 .time_element:hover {
-    background-color: rgba(0,60,136,.7);
+    background-color: rgba(0, 60, 136, .7);
 }
 
 .time_element_selected {
-    background-color: rgba(0,60,136,.7);
+    background-color: rgba(0, 60, 136, .7);
     font-weight: bold;
 }
 
