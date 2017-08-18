@@ -14,6 +14,8 @@ var capabilities = {};
 var timeValues = {};
 //object storing time selection for time-enabled layers
 var timeSelection = {};
+//object storing legend divs for WMS layers
+var legends = {};
 
 
 /******************************************************
@@ -21,7 +23,6 @@ var timeSelection = {};
  * OpenLayers map functions
  *
  *****************************************************/
-
 
 /**
  * initialize a WMS layer
@@ -32,26 +33,46 @@ var timeSelection = {};
  * @param opacity display opacity for this layer
  * @param type WMS layer type ('base' for base layer and '' for overlay)
  * @param timeEnabled flag: WMS layer has time dimension
+ * @param attribution OpenLayers attribution
+ * @param zIndex initial z index
  */
-function f_initWMSLayer(url, layer, title, visible, opacity, type, timeEnabled) {
+function f_initWMSLayer(url, layer, title, visible, opacity, type, timeEnabled, attribution, zIndex) {
     //initialize ol WMS layer
     var wmsLayer = new ol.layer.Image({
-        title: title,
+        title: layer + ": " + title,
         visible: visible,
         type: type,
         opacity: opacity,
+        zIndex: zIndex,
         source: new ol.source.ImageWMS({
             url: url,
-            params: {'FORMAT': 'image/png', 'VERSION': '1.3.0', 'STYLES': '', 'LAYERS': layer}
+            params: {'FORMAT': 'image/png', 'VERSION': '1.1.0', 'STYLES': '', 'LAYERS': layer},
+            attributions: attribution
         })
     });
-    //get capabilities document
-    capabilities[layer] = f_getCapabilities(url, layer, timeEnabled);
+    //set layer id
+    wmsLayer.id = ol.control.LayerSwitcher.uuid();
     //add layer to corresponding collection
     if (type === 'base')
         baseLayers[layer] = wmsLayer;
     else
         overlays[layer] = wmsLayer;
+    //get capabilities document
+    capabilities[layer] = f_getCapabilities(url, layer, wmsLayer, timeEnabled);
+}
+
+/**
+ * set WMS legend
+ * @param layer WMS layer name
+ * @param legendUrl URL of legend
+ */
+function f_setLegend(layer, legendUrl) {
+    if(legendUrl === null)
+        return;
+    //add legend to container_legend
+    var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
+    legends[layer] = legend;
+    $('#container_legend').append(legend);
 }
 
 function f_initGeoJSONLayer(url, style, title, visible) {
@@ -67,58 +88,150 @@ function f_initGeoJSONLayer(url, style, title, visible) {
 }
 
 /**
+ * set of proxies to access services blocked by same-origin policy
+ */
+var proxies = {};
+proxies["https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest"] = "https://extruso.bu.tu-dresden.de/geosn_dop";
+proxies["https://geodienste.sachsen.de/wms_geosn_hoehe/guest"] = "https://extruso.bu.tu-dresden.de/geosn_hoehe";
+proxies["https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm"] = "https://extruso.bu.tu-dresden.de/lfulg_ezg";
+
+/**
  * get WMS layer capabilities
  * @param url capabilities url
  * @param layer WMS layer
+ * @param wmsLayer ol layer object
  * @param timeEnabled flag: layer has time dimension
  */
-function f_getCapabilities(url, layer, timeEnabled) {
+function f_getCapabilities(url, layer, wmsLayer, timeEnabled) {
+    //change url, if a proxy is defined
+    if(proxies[url] !== undefined)
+        url = proxies[url];
     var parser = new ol.format.WMSCapabilities();
-    var request = url + 'service=wms&request=getCapabilities';
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', request, true);
-    xhr.onload = function () {
-        if (xhr.status === 200) {
-            var capabilities = parser.read(xhr.responseXML);
-            var wmsTopLayer = capabilities.Capability.Layer;
-            var wmsLayer = f_getLayerByName(wmsTopLayer.Layer, layer);
-            if (wmsLayer === null)
-                return;
-            //get dimension
-            capabilities[layer] = wmsLayer;
-            if (timeEnabled) {
-                f_initTimeDimesion(wmsLayer, layer);
-                //change visibility of time selection
-                wmsLayer.on('change:visible', function () {
-                    //set visibility for time selection
-                    if (this.getVisible())
-                        $(timeSelection[layer].div_selector).removeClass('hidden');
-                    else
-                        $(timeSelection[layer].div_selector).addClass('hidden');
-                });
-            }
+    var request = url + '?service=wms&request=getCapabilities';
+    $.get(request).done(function(data) {
+        var capabilities = parser.read(data);
+        var wmsTopLayer = capabilities.Capability.Layer;
+        var wmsLayerCapabilities = f_getLayerByName(wmsTopLayer.Layer, layer);
+        if (wmsLayerCapabilities === null)
+            return;
+        //get dimension
+        capabilities[layer] = wmsLayerCapabilities;
+        if (timeEnabled) {
+            f_initTimeDimesion(wmsLayerCapabilities, layer);
+            //change visibility of time selection
+            wmsLayer.on('change:visible', function () {
+                //set visibility for time selection
+                if (this.getVisible())
+                    $(timeSelection[layer].div_selector).removeClass('hidden');
+                else
+                    $(timeSelection[layer].div_selector).addClass('hidden');
+            });
         }
-    };
-    xhr.send();
+        //get legend and set attribution
+        var legendUrl = f_getLegendUrlFromCapabilities(wmsLayerCapabilities);
+        //only add legend, if URL is valid
+        urlExists(url, function(exists){
+            if(exists)
+                f_setLegend(layer, legendUrl);
+        });
+        //change visibility of legend
+        wmsLayer.on('change:visible', function () {
+            //return if legend is not set
+            if(legends[layer] === undefined)
+                return;
+            //set visibility for time selection
+            if (this.getVisible())
+                legends[layer].removeClass('hidden');
+            else
+                legends[layer].addClass('hidden');
+        });
+    });
+}
+
+/**
+ * check, if URL is valid
+ * @param url input url
+ * @param callback
+ */
+function urlExists(url, callback){
+    $.ajax({
+        type: 'HEAD',
+        url: url,
+        success: function(){
+            callback(true);
+        },
+        error: function() {
+            callback(false);
+        }
+    });
+}
+
+/**
+ * get legend url from layer capabilities
+ * @param wmsLayerCapabilities layer capabilities
+ * @returns layer legend url
+ */
+function f_getLegendUrlFromCapabilities(wmsLayerCapabilities) {
+    if (wmsLayerCapabilities === null || !("Style" in wmsLayerCapabilities))
+        return null;
+    return f_getLegendUrlFromStyles(wmsLayerCapabilities.Style);
+}
+
+/**
+ * get legend url from layer style definitions
+ * @param styles layer style definitions
+ * @returns layer legend url
+ */
+function f_getLegendUrlFromStyles(styles) {
+    if (styles === null || styles.length !== 1)
+        return null;
+    return f_getLegendUrlFromStyle(styles[0]);
+}
+
+/**
+ * get legend url from layer style definition
+ * @param style layer style definition
+ * @returns layer legend url
+ */
+function f_getLegendUrlFromStyle(style) {
+    if (style === null || !("LegendURL" in style))
+        return null;
+    return f_getLegendUrlFromLegend(style.LegendURL[0]);
+}
+
+/**
+ * get legend url from legend url object
+ * @param legendURL legend url object
+ * @returns layer legend url
+ */
+function f_getLegendUrlFromLegend(legendURL) {
+    if(!("OnlineResource" in legendURL))
+        return null;
+    var resource = legendURL.OnlineResource;
+    //replace http with https to prevent mixed content warning
+    resource = resource.replace(/^http:\/\//i, 'https://');
+    return resource;
 }
 
 /**
  * initialize time dimension for WMS layer
- * @param wmsLayer WMS layer capabilities
+ * @param wmsLayerCapabilities WMS layer capabilities
  * @param layer WMS layer name
  */
-function f_initTimeDimesion(wmsLayer, layer) {
+function f_initTimeDimesion(wmsLayerCapabilities, layer) {
     //init selector object
     f_initTimeSelector(layer);
     //append selection divs for display
     f_displayTimeSelection(layer);
     //get dimension
-    var dimension = f_getDimension(wmsLayer, "time")
+    var dimension = f_getDimension(wmsLayerCapabilities, "time")
     if (dimension === null)
         return;
-    var defaultValue = dimension.default;
-    var values = dimension.values;
-    f_initTimeSelection(layer, values, defaultValue);
+    var defaultValue = new Date(dimension.default);
+    //parse date values
+    timeValues[layer] = f_getDateArray(dimension.values, ",");
+    //parse date values
+    f_initTimeSelection(layer, defaultValue);
 }
 
 /**
@@ -163,30 +276,39 @@ function f_getDimension(wmsLayer, name) {
  */
 function f_displayTimeSelection(layer) {
     $('#container_time').append('<div id="time_' + layer + '" class="container_time_layer hidden">' +
-        '   <div class="time_title">Time selection for ' + layer + ' </div>\n' +
-        '   <div class="time_section">\n' +
-        '       <div class="time_label_adjust" >&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[0].div_name + '"></div>\n' +
-        '       <div class="time_label">Y</div>\n' +
+        '   <div class="time_section time_steps">' +
+        '       <div class="time_title">Time selection for <b>' + layer + '</b></div>\n' +
+        '       <a href="#" class="time_step" title="previous" onclick="f_timeStep(\'' + layer + '\', -1)">&#x23f4;</a>' +
+        '       <a href="#" class="time_step" title="first" onclick="f_timeStep(\'' + layer + '\', -2)">&#x23ee;</a>' +
+        '   </div>' +
+        '   <div class="time_section" title="Hours">\n' +
+        '       <div class="time_label">H</div>\n' +
+        '       <div id="' + timeSelection[layer].selection[3].div_name + '"></div>\n' +
         '   </div>\n' +
-        '   <div class="time_section">\n' +
-        '       <div class="time_label">M</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[1].div_name + '"></div>\n' +
-        '   </div>\n' +
-        '   <div class="time_section">\n' +
-        '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[2].div_name + '"></div>\n' +
-        '       <div class="time_label">D</div>\n' +
-        '   </div>\n' +
-        '   <div class="time_section">\n' +
+        '   <div class="time_section" title="Minutes">\n' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
         '       <div id="' + timeSelection[layer].selection[4].div_name + '"></div>\n' +
         '       <div class="time_label">M</div>\n' +
         '   </div>\n' +
-        '   <div class="time_section">\n' +
-        '       <div class="time_label">H</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[3].div_name + '"></div>\n' +
+        '   <div class="time_section" title="Day">\n' +
+        '       <div class="time_label_adjust">&nbsp;</div>\n' +
+        '       <div id="' + timeSelection[layer].selection[2].div_name + '"></div>\n' +
+        '       <div class="time_label">D</div>\n' +
         '   </div>\n' +
+        '   <div class="time_section" title="Month">\n' +
+        '       <div class="time_label">M</div>\n' +
+        '       <div id="' + timeSelection[layer].selection[1].div_name + '"></div>\n' +
+        '   </div>\n' +
+        '   <div class="time_section" title="Year">\n' +
+        '       <div class="time_label_adjust" >&nbsp;</div>\n' +
+        '       <div id="' + timeSelection[layer].selection[0].div_name + '"></div>\n' +
+        '       <div class="time_label">Y</div>\n' +
+        '   </div>\n' +
+        '   <div class="time_section time_steps">' +
+        '       <div class="time_label_adjust">&nbsp;</div>\n' +
+        '       <a href="#" class="time_step" title="last" onclick="f_timeStep(\'' + layer + '\', 2)">&#x23ed;</a>' +
+        '       <a href="#" class="time_step" title="next" onclick="f_timeStep(\'' + layer + '\', 1)">&#x23f5;</a>' +
+        '   </div>' +
         '</div>');
 }
 
@@ -273,20 +395,15 @@ function f_jQueryEscape(selector) {
 /**
  * initialize current time selection
  * @param layer layer name
- * @param values string of time values
- * @param defaultValue default time value
+ * @param value Date value
  */
-function f_initTimeSelection(layer, values, defaultValue) {
-    //parse date values
-    timeValues[layer] = f_getDateArray(values, ",");
+function f_initTimeSelection(layer, value) {
     //get array of available years
     timeSelection[layer].selection[0].values = f_getDateElementArray(timeValues[layer], timeSelection[layer].selection[0].utcFunction);
-    //start with selection of year, if defaultTime is null
-    var defaultTime = new Date(defaultValue);
-    //set first value as default, if defaultValue === 'current'
-    if (defaultTime instanceof Date && !isNaN(defaultTime.valueOf())) {
+    //init default value, if input value is a valid Date
+    if (value instanceof Date && !isNaN(value.valueOf())) {
         for (var i = 0; i < timeSelection[layer].selection.length; i++) {
-            f_updateTimeSelection(layer, i, defaultTime[timeSelection[layer].selection[i].utcFunction]());
+            f_updateTimeSelection(layer, i, value[timeSelection[layer].selection[i].utcFunction]());
         }
     }
     //start with selection of year
@@ -308,6 +425,9 @@ function f_getDateArray(values, separator) {
         if (date !== null)
             dArray.push(date);
     }
+    dArray.sort(function (a, b) {
+        return a - b;
+    });
     return dArray;
 }
 
@@ -391,15 +511,59 @@ function f_updateTimeSelection(layer, index, selectedValue) {
 }
 
 /**
+ * set time selection to defined value
+ * @param layer name of time-enabled layer
+ * @param value target time value
+ */
+function f_timeStep(layer, value){
+    //first value
+    if(value === -2)
+        f_initTimeSelection(layer, timeValues[layer][0]);
+    //last value
+    else if(value === 2)
+        f_initTimeSelection(layer, timeValues[layer][timeValues[layer].length - 1]);
+    else {
+        //return if current selection is incomplete
+        if(!timeSelection[layer].isComplete)
+            return;
+        //get current value
+        var currentValue = timeSelection[layer].filteredValues[0];
+        //get index of current value in list of values
+        var index = timeValues[layer].indexOf(currentValue);
+        //previous value (if current selection is not the first value)
+        if(value === -1 && index >= 1)
+            f_initTimeSelection(layer, timeValues[layer][index - 1]);
+        //next value (if current selection is not the last value)
+        else if(value === 1 && index < timeValues[layer].length - 1)
+            f_initTimeSelection(layer, timeValues[layer][index + 1]);
+    }
+}
+
+/**
  * get value for display
  * @param index index for time sub-element
  * @param value value to be displayed
  * @returns display value
  */
 function f_getTimeValueDisplay(index, value) {
+
     //increase month number to set range from [0,11] to [1,12]
-    if (index === 1)
-        return value + 1;
+    if(index === 1)
+        value += 1;
+
+    //account for time zone offset (UTC vs CET or CEST)
+    var offset = new Date().getTimezoneOffset();
+    var hDiff = (offset / 60).toFixed(0);
+    var mDiff = offset - (hDiff * 60);
+    if(index === 3)
+        value = value - hDiff;
+    else if(index === 4)
+        value = value - mDiff;
+
+    //append preceding zero for one-number digits
+    if(value <= 9)
+        value = '0' + value;
+
     return value;
 }
 
@@ -423,25 +587,25 @@ function f_unselectTime(layer, index) {
 var style_ezg = new ol.style.Style({
     stroke: new ol.style.Stroke({color: '#0070C0', width: 1}),
     fill: new ol.style.Fill({color: 'rgba(0,112,192,0.5)'})
-})
+});
 var style_ezg_highlight = new ol.style.Style({
     stroke: new ol.style.Stroke({color: '#DD2222', width: 1}),
     fill: new ol.style.Fill({color: 'rgba(221,34,34,0.3)'})
-})
+});
 
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
 
-baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM()});
+baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto (GeoSN)", false, 1, 'base', false, 'Orthophoto &copy; LfULG. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Höhenmodell (GeoSN)", false, 1, 'base', false, 'Höhenmodell &copy; LfULG. ', 0);
 
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest?", "sn_dop_020", "Orthophoto (GeoSN)", false, 1, 'base', false);
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest?", "Gelaendehoehe", "Höhenmodell (GeoSN)", false, 1, 'base', false);
+f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
+f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm?", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false);
-f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm?", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false);
-
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows?", "dwd:SF-Produkt", "Radarkomposit (24h, DWD)", false, 0.75, '', true);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows?", "dwd:FX-Produkt", "Radarvorhersage (2h, DWD)", false, 0.75, '', true);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radarkomposit (24h, DWD)", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radarvorhersage (2h, DWD)", false, 0.75, '', true, 'Radarvorhersage &copy; DWD. ', 4);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radarkomposit (5min, DWD)", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 5);
 
 //TODO: Vector overlays
 var layer_ezg_extruso = f_initGeoJSONLayer("https://extruso.bu.tu-dresden.de/sites/default/files/geodata/EZG_gesamt.geojson", style_ezg, "Pilot-Einzugsgebiete", false);
@@ -450,9 +614,7 @@ var layer_ezg_extruso_highlight;
 var default_view = new ol.View({projection: projection, center: center, zoom: 10});
 
 var map = new ol.Map({
-    controls: ol.control.defaults().extend([
-        new ol.control.LayerSwitcher()
-    ]),
+    controls: ol.control.defaults(),
     layers: [
         new ol.layer.Group({
             title: 'Kartengrundlage',
@@ -470,6 +632,9 @@ var map = new ol.Map({
     target: 'map',
     view: default_view
 });
+
+var layerSwitcher = new ol.control.LayerSwitcher();
+map.addControl(layerSwitcher);
 
 var layer_ezg_extruso_overlay = new ol.layer.Vector({
     source: new ol.source.Vector(),
@@ -509,6 +674,17 @@ map.on('pointermove', function (evt) {
     var pixel = map.getEventPixel(evt.originalEvent);
     displayEZGInfo(pixel);
 });
+
+/**
+ * sort overlays based on input array with layer ids
+ * @param currentSort input ids
+ */
+function f_sortLayers(currentSort) {
+    for (var layer in overlays) {
+        overlays[layer].setZIndex((jQuery.inArray(overlays[layer].id, currentSort)) + 1);
+    }
+}
+
 
 
 // $(function() {

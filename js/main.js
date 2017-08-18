@@ -6,10 +6,10 @@ $(function () {
         "    <div id=\"logo\">EXTRUSO</div>\n" +
         "    <nav class=\"site-navigation\">\n" +
         "        <ul class=\"menu-list\">\n" +
-        "            <li><a href=\"/xtruso_web\">Home</a></li>\n" +
-        "            <li><a href=\"/xtruso_web/news\">Aktuelles</a></li>\n" +
-        "            <li><a href=\"/xtruso_web/map\">Karte</a></li>\n" +
-        "            <li><a href=\"/xtruso_web/projektinfo\">Projektinformationen</a></li>\n" +
+        "            <li><a href=\"https://extruso.bu.tu-dresden.de\">Home</a></li>\n" +
+        "            <li><a href=\"https://extruso.bu.tu-dresden.de/news\">Aktuelles</a></li>\n" +
+        "            <li><a href=\"https://extruso.bu.tu-dresden.de/map\">Karte</a></li>\n" +
+        "            <li><a href=\"https://extruso.bu.tu-dresden.de/projektinfo\">Projektinformationen</a></li>\n" +
         "        </ul>\n" +
         "    </nav>\n" +
         "</header>");
@@ -32,9 +32,9 @@ $(function () {
 $(function () {
     $("#funding").append("<div class=\"content container\">\n" +
         "    <div class=\"flex-container\">\n" +
-        "       <div class=\"flex-item-fun\"><img src=\"/xtruso_web/img/logo-extruso.png\" style=\"height: 100px;\"></div>\n" +
-        "       <div class=\"flex-item-fun\"><img src=\"/xtruso_web/img/logo-tud.png\" style=\"height: 100px;\"></div>\n" +
-        "       <div class=\"flex-item-fun\"><img src=\"/xtruso_web/img/logo-esf.png\" style=\"height: 100px;\"></div>\n" +
+        "       <div class=\"flex-item-fun\"><img src=\"https://extruso.bu.tu-dresden.de/img/logo-extruso.png\"></div>\n" +
+        "       <div class=\"flex-item-fun\"><a href=\"https://tu-dresden.de\"><img src=\"https://extruso.bu.tu-dresden.de/img/logo-tud.png\"></a></div>\n" +
+        "       <div class=\"flex-item-fun\"><a href=\"http://www.esf.de\"><img src=\"https://extruso.bu.tu-dresden.de/img/logo-esf.png\"></a></div>\n" +
         "    </div>\n" +
         "</div>");
 });
@@ -51,3 +51,14 @@ $(function () {
         $title.toggleClass("expanded");
     });
 });
+
+/**
+ * ajax loading GIF
+ */
+$(document)
+    .ajaxStart(function () {
+        $('#loading_overlay').show();
+    })
+    .ajaxStop(function () {
+        $('#loading_overlay').hide();
+    });

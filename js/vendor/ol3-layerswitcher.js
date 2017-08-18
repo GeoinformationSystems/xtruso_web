@@ -102,7 +102,24 @@
 
         var ul = document.createElement('ul');
         this.panel.appendChild(ul);
+
         this.renderLayers_(this.getMap(), ul);
+
+        /**
+         * set sortable class
+         */
+        $("#sortableOverlays").sortable({
+            //function called each time the layer list is sorted
+            stop: function(ev, ui) {
+                var items = $('#sortableOverlays').sortable('refreshPositions').children();
+                var currentSort = [];
+                $.each(items, function () {
+                    currentSort.push($(this).children("input").attr("id"));
+                });
+                currentSort.reverse();
+                f_sortLayers(currentSort);
+            }
+        });
 
     };
 
@@ -176,6 +193,12 @@
         var lyrTitle = lyr.get('title');
         var lyrId = ol.control.LayerSwitcher.uuid();
 
+        /**
+         * set id for WMS layer to facilitate accessibility, id is set during layer initialization
+         */
+       if(lyr.id !== undefined)
+            lyrId = lyr.id;
+
         var label = document.createElement('label');
 
         if (lyr.getLayers && !lyr.get('combine')) {
@@ -184,9 +207,16 @@
             label.innerHTML = lyrTitle;
             li.appendChild(label);
             var ul = document.createElement('ul');
+
             li.appendChild(ul);
 
             this.renderLayers_(lyr, ul);
+
+            /**
+             * add sortable to overlays
+             */
+            if(lyrTitle === "Overlays")
+                ul.setAttribute("id", "sortableOverlays");
 
         } else {
 
