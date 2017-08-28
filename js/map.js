@@ -326,7 +326,7 @@ function f_initTimeSelector(layer) {
         'title': 'year',
         'div_name': layer + '_year',
         'div_selector': '#' + escapedLayer + '_year',
-        'utcFunction': 'getUTCFullYear',
+        'timeFunction': 'getFullYear',
         'values': [],
         'selected': null
     };
@@ -334,7 +334,7 @@ function f_initTimeSelector(layer) {
         'title': 'month',
         'div_name': layer + '_month',
         'div_selector': '#' + escapedLayer + '_month',
-        'utcFunction': 'getUTCMonth',
+        'timeFunction': 'getMonth',
         'values': [],
         'selected': null
     };
@@ -342,7 +342,7 @@ function f_initTimeSelector(layer) {
         'title': 'date',
         'div_name': layer + '_date',
         'div_selector': '#' + escapedLayer + '_date',
-        'utcFunction': 'getUTCDate',
+        'timeFunction': 'getDate',
         'values': [],
         'selected': null
     };
@@ -350,7 +350,7 @@ function f_initTimeSelector(layer) {
         'title': 'hours',
         'div_name': layer + '_hours',
         'div_selector': '#' + escapedLayer + '_hours',
-        'utcFunction': 'getUTCHours',
+        'timeFunction': 'getHours',
         'values': [],
         'selected': null
     };
@@ -358,7 +358,7 @@ function f_initTimeSelector(layer) {
         'title': 'minutes',
         'div_name': layer + '_minutes',
         'div_selector': '#' + escapedLayer + '_minutes',
-        'utcFunction': 'getUTCMinutes',
+        'timeFunction': 'getMinutes',
         'values': [],
         'selected': null
     };
@@ -379,6 +379,7 @@ function f_setTimeSelection(layer, index, value) {
         return;
     timeSelection[layer].selection[index].selected = value;
     timeSelection[layer].filteredValues = f_filterTimeValues(layer);
+    //change WMS timestamp, if time selection is complete
     if (timeSelection[layer].isComplete() === true)
         overlays[layer].getSource().updateParams({'TIME': timeSelection[layer].filteredValues[0].toISOString()});
 }
@@ -399,11 +400,11 @@ function f_jQueryEscape(selector) {
  */
 function f_initTimeSelection(layer, value) {
     //get array of available years
-    timeSelection[layer].selection[0].values = f_getDateElementArray(timeValues[layer], timeSelection[layer].selection[0].utcFunction);
+    timeSelection[layer].selection[0].values = f_getDateElementArray(timeValues[layer], timeSelection[layer].selection[0].timeFunction);
     //init default value, if input value is a valid Date
     if (value instanceof Date && !isNaN(value.valueOf())) {
         for (var i = 0; i < timeSelection[layer].selection.length; i++) {
-            f_updateTimeSelection(layer, i, value[timeSelection[layer].selection[i].utcFunction]());
+            f_updateTimeSelection(layer, i, value[timeSelection[layer].selection[i].timeFunction]());
         }
     }
     //start with selection of year
@@ -463,7 +464,7 @@ function f_filterTimeValues(layer) {
         var filter = true;
         for (var j = 0; j < timeSelection[layer].selection.length; j++) {
             var selected = timeSelection[layer].selection[j].selected;
-            if (selected !== null && timestamp[timeSelection[layer].selection[j].utcFunction]() !== selected)
+            if (selected !== null && timestamp[timeSelection[layer].selection[j].timeFunction]() !== selected)
                 filter = false;
         }
         if (filter)
@@ -505,7 +506,7 @@ function f_updateTimeSelection(layer, index, selectedValue) {
     timeSelectionDiv.parent().find('.time_label').addClass('time_label_active');
     //display child elements, if selectedValue is not null
     if (selectedValue !== null && timeSelection[layer].selection[index + 1] !== void 0) {
-        timeSelection[layer].selection[index + 1].values = f_getDateElementArray(timeSelection[layer].filteredValues, timeSelection[layer].selection[index + 1].utcFunction);
+        timeSelection[layer].selection[index + 1].values = f_getDateElementArray(timeSelection[layer].filteredValues, timeSelection[layer].selection[index + 1].timeFunction);
         f_updateTimeSelection(layer, index + 1, null);
     }
 }
@@ -550,15 +551,6 @@ function f_getTimeValueDisplay(index, value) {
     //increase month number to set range from [0,11] to [1,12]
     if(index === 1)
         value += 1;
-
-    //account for time zone offset (UTC vs CET or CEST)
-    var offset = new Date().getTimezoneOffset();
-    var hDiff = (offset / 60).toFixed(0);
-    var mDiff = offset - (hDiff * 60);
-    if(index === 3)
-        value = value - hDiff;
-    else if(index === 4)
-        value = value - mDiff;
 
     //append preceding zero for one-number digits
     if(value <= 9)
