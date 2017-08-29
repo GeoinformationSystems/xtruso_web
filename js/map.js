@@ -9,6 +9,7 @@ var baseLayers = {};
 //collection of image overlays
 var overlays = {};
 //collection of WMS layer capabilities documents
+var capabilitiesDocument = {};
 var capabilities = {};
 //object storing available time values for time-enabled layers
 var timeValues = {};
@@ -58,7 +59,7 @@ function f_initWMSLayer(url, layer, title, visible, opacity, type, timeEnabled, 
     else
         overlays[layer] = wmsLayer;
     //get capabilities document
-    capabilities[layer] = f_getCapabilities(url, layer, wmsLayer, timeEnabled);
+    f_getCapabilities(url, layer, wmsLayer, timeEnabled);
 }
 
 /**
@@ -103,50 +104,71 @@ proxies["https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/ei
  * @param timeEnabled flag: layer has time dimension
  */
 function f_getCapabilities(url, layer, wmsLayer, timeEnabled) {
-    //change url, if a proxy is defined
-    if(proxies[url] !== undefined)
-        url = proxies[url];
-    var parser = new ol.format.WMSCapabilities();
-    var request = url + '?service=wms&request=getCapabilities';
-    $.get(request).done(function(data) {
-        var capabilities = parser.read(data);
-        var wmsTopLayer = capabilities.Capability.Layer;
-        var wmsLayerCapabilities = f_getLayerByName(wmsTopLayer.Layer, layer);
-        if (wmsLayerCapabilities === null)
-            return;
-        //get dimension
-        capabilities[layer] = wmsLayerCapabilities;
-        if (timeEnabled) {
-            f_initTimeDimesion(wmsLayerCapabilities, layer);
-            //change visibility of time selection
-            wmsLayer.on('change:visible', function () {
-                //set visibility for time selection
-                if (this.getVisible())
-                    $(timeSelection[layer].div_selector).removeClass('hidden');
-                else
-                    $(timeSelection[layer].div_selector).addClass('hidden');
-            });
-        }
-        //get legend and set attribution
-        var legendUrl = f_getLegendUrlFromCapabilities(wmsLayerCapabilities);
-        //only add legend, if URL is valid
-        urlExists(url, function(exists){
-            if(exists)
-                f_setLegend(layer, legendUrl);
+
+    //get already registered capabilities
+    if(capabilitiesDocument[url] !== undefined) {
+        if(capabilitiesDocument[url] !== null)
+            f_initCapabilities(capabilitiesDocument[url], layer, wmsLayer, timeEnabled);
+        else
+            setTimeout(f_getCapabilities.bind(null, url, layer, wmsLayer, timeEnabled), 250);
+    }
+
+    //read capabilities document from URL
+    else {
+        //set capabilities dummy object
+        capabilitiesDocument[url] = null;
+        //change url, if a proxy is defined
+        if(proxies[url] !== undefined)
+            url = proxies[url];
+        var parser = new ol.format.WMSCapabilities();
+        var request = url + '?service=wms&request=getCapabilities';
+        $.get(request).done(function(data) {
+            capabilitiesDocument[url] = parser.read(data);
+            f_initCapabilities(capabilitiesDocument[url], layer, wmsLayer, timeEnabled);
         });
-        //change visibility of legend
+
+    }
+
+}
+
+function f_initCapabilities(capabilitiesDoc, layer, wmsLayer, timeEnabled) {
+    var wmsTopLayer = capabilitiesDoc.Capability.Layer;
+    var wmsLayerCapabilities = f_getLayerByName(wmsTopLayer.Layer, layer);
+    if (wmsLayerCapabilities === null)
+        return;
+    //get dimension
+    capabilities[layer] = wmsLayerCapabilities;
+    if (timeEnabled) {
+        f_initTimeDimesion(wmsLayerCapabilities, layer);
+        //change visibility of time selection
         wmsLayer.on('change:visible', function () {
-            //return if legend is not set
-            if(legends[layer] === undefined)
-                return;
             //set visibility for time selection
             if (this.getVisible())
-                legends[layer].removeClass('hidden');
+                $(timeSelection[layer].div_selector).removeClass('hidden');
             else
-                legends[layer].addClass('hidden');
+                $(timeSelection[layer].div_selector).addClass('hidden');
         });
+    }
+    //get legend and set attribution
+    var legendUrl = f_getLegendUrlFromCapabilities(wmsLayerCapabilities);
+    //only add legend, if URL is valid
+    urlExists(legendUrl, function(exists){
+        if(exists)
+            f_setLegend(layer, legendUrl);
+    });
+    //change visibility of legend
+    wmsLayer.on('change:visible', function () {
+        //return if legend is not set
+        if(legends[layer] === undefined)
+            return;
+        //set visibility for time selection
+        if (this.getVisible())
+            legends[layer].removeClass('hidden');
+        else
+            legends[layer].addClass('hidden');
     });
 }
+
 
 /**
  * check, if URL is valid
