@@ -7,7 +7,11 @@
 //collection of image base layers
 var baseLayers = {};
 //collection of image overlays
-var overlays = {};
+var imageOverlays = {};
+//collection of vector overlays
+var vectorOverlays = {};
+//highlight features
+var vectorHighlight = [];
 //collection of WMS layer capabilities documents
 var capabilitiesDocument = {};
 var capabilities = {};
@@ -17,76 +21,8 @@ var timeValues = {};
 var timeSelection = {};
 //object storing legend divs for WMS layers
 var legends = {};
-
-
-/******************************************************
- *
- * OpenLayers map functions
- *
- *****************************************************/
-
-/**
- * initialize a WMS layer
- * @param url WMS base url
- * @param layer WMS layer name
- * @param title WMS display title
- * @param visible flag: initial visibility
- * @param opacity display opacity for this layer
- * @param type WMS layer type ('base' for base layer and '' for overlay)
- * @param timeEnabled flag: WMS layer has time dimension
- * @param attribution OpenLayers attribution
- * @param zIndex initial z index
- */
-function f_initWMSLayer(url, layer, title, visible, opacity, type, timeEnabled, attribution, zIndex) {
-    //initialize ol WMS layer
-    var wmsLayer = new ol.layer.Image({
-        title: layer + ": " + title,
-        visible: visible,
-        type: type,
-        opacity: opacity,
-        zIndex: zIndex,
-        source: new ol.source.ImageWMS({
-            url: url,
-            params: {'FORMAT': 'image/png', 'VERSION': '1.1.0', 'STYLES': '', 'LAYERS': layer},
-            attributions: attribution
-        })
-    });
-    //set layer id
-    wmsLayer.id = ol.control.LayerSwitcher.uuid();
-    //add layer to corresponding collection
-    if (type === 'base')
-        baseLayers[layer] = wmsLayer;
-    else
-        overlays[layer] = wmsLayer;
-    //get capabilities document
-    f_getCapabilities(url, layer, wmsLayer, timeEnabled);
-}
-
-/**
- * set WMS legend
- * @param layer WMS layer name
- * @param legendUrl URL of legend
- */
-function f_setLegend(layer, legendUrl) {
-    if(legendUrl === null)
-        return;
-    //add legend to container_legend
-    var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
-    legends[layer] = legend;
-    $('#container_legend').append(legend);
-}
-
-function f_initGeoJSONLayer(url, style, title, visible) {
-    return new ol.layer.Vector({
-        title: title,
-        visible: visible,
-        source: new ol.source.Vector({
-            url: url,
-            format: new ol.format.GeoJSON()
-        }),
-        style: style
-    });
-}
+//coordinate div
+var coordDiv = "coord"
 
 /**
  * set of proxies to access services blocked by same-origin policy
@@ -96,76 +32,183 @@ proxies["https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest"] = "https://extr
 proxies["https://geodienste.sachsen.de/wms_geosn_hoehe/guest"] = "https://extruso.bu.tu-dresden.de/geosn_hoehe";
 proxies["https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm"] = "https://extruso.bu.tu-dresden.de/lfulg_ezg";
 
+
+/******************************************************
+ *
+ * OpenLayers map functions
+ *
+ *****************************************************/
+
+/**
+ * escape non-alphanumeric symbols from id to be applicable as jQuery selector
+ * @param selector
+ */
+function f_escapeSelector(selector){
+    return selector.replace(/[^a-zA-Z\d]/g, "" );
+}
+
+/**
+ * initialize a WMS layer
+ * @param baseUrl WMS base url
+ * @param layer WMS layer name
+ * @param title WMS display title
+ * @param visible flag: initial visibility
+ * @param opacity display opacity for this layer
+ * @param type WMS layer type ('base' for base layer and '' for overlay)
+ * @param timeEnabled flag: WMS layer has time dimension
+ * @param attribution OpenLayers attribution
+ * @param zIndex initial z index
+ */
+function f_initWMSLayer(baseUrl, layer, title, visible, opacity, type, timeEnabled, attribution, zIndex) {
+    //initialize ol WMS layer
+    var wmsLayer = new ol.layer.Image({
+        title: title,
+        visible: visible,
+        type: type,
+        opacity: opacity,
+        zIndex: zIndex,
+        source: new ol.source.ImageWMS({
+            url: baseUrl,
+            params: {'FORMAT': 'image/png', 'VERSION': '1.1.0', 'STYLES': '', 'LAYERS': layer},
+            attributions: attribution
+        })
+    });
+    //set layer id
+    wmsLayer.id = f_escapeSelector(baseUrl + ":" + layer);
+    wmsLayer.name = layer;
+    //add layer to corresponding collection
+    if (type === 'base')
+        baseLayers[wmsLayer.id] = wmsLayer;
+    else
+        imageOverlays[wmsLayer.id] = wmsLayer;
+    //get capabilities document
+    f_getCapabilities(baseUrl, wmsLayer.id, layer, wmsLayer, timeEnabled);
+}
+
+/**
+ * set WMS legend
+ * @param layerId layer id
+ * @param layer WMS layer name
+ * @param legendUrl URL of legend
+ */
+function f_setLegend(layerId, layer, legendUrl) {
+    if(legendUrl === null)
+        return;
+    //add legend to container_legend
+    var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
+    legends[layerId] = legend;
+    $('#container_legend').append(legend);
+}
+
+function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution, zIndex, maxResolution, style) {
+    //init URL
+    var url = (baseUrl.endsWith('?') ? baseUrl : baseUrl + "?") +
+        "service=WFS" +
+        "&version=1.0.0" +
+        "&request=GetFeature" +
+        "&outputformat=json" +
+        "&typeName=" + layer;
+    //init WFS layer
+    var vectorLayer = new ol.layer.Vector({
+        title: title,
+        visible: visible,
+        opacity: opacity,
+        zIndex: zIndex,
+        maxResolution: maxResolution,
+        source: new ol.source.Vector({
+            url: function (extent) {
+                return url + '&bbox=' + extent.join(',') + ',EPSG:3857';
+            },
+            format: new ol.format.GeoJSON(),
+            strategy: ol.loadingstrategy.bbox,
+            attributions: attribution
+        }),
+        style: style
+    });
+    vectorLayer.id = f_escapeSelector(baseUrl + ":" + layer);
+    vectorLayer.name = layer;
+    vectorOverlays[vectorLayer.id] = vectorLayer;
+}
+
 /**
  * get WMS layer capabilities
  * @param url capabilities url
+ * @param layerId layer id
  * @param layer WMS layer
  * @param wmsLayer ol layer object
  * @param timeEnabled flag: layer has time dimension
  */
-function f_getCapabilities(url, layer, wmsLayer, timeEnabled) {
+function f_getCapabilities(url, layerId, layer, wmsLayer, timeEnabled) {
+	
+	//change url, if a proxy is defined
+	if(proxies[url] !== undefined)
+		url = proxies[url];
 
     //get already registered capabilities
     if(capabilitiesDocument[url] !== undefined) {
         if(capabilitiesDocument[url] !== null)
-            f_initCapabilities(capabilitiesDocument[url], layer, wmsLayer, timeEnabled);
+            f_initCapabilities(capabilitiesDocument[url], layerId, layer, wmsLayer, timeEnabled);
         else
-            setTimeout(f_getCapabilities.bind(null, url, layer, wmsLayer, timeEnabled), 250);
+            setTimeout(f_getCapabilities.bind(null, url, layerId, layer, wmsLayer, timeEnabled), 250);
     }
 
     //read capabilities document from URL
     else {
         //set capabilities dummy object
         capabilitiesDocument[url] = null;
-        //change url, if a proxy is defined
-        if(proxies[url] !== undefined)
-            url = proxies[url];
         var parser = new ol.format.WMSCapabilities();
         var request = url + '?service=wms&request=getCapabilities';
         $.get(request).done(function(data) {
             capabilitiesDocument[url] = parser.read(data);
-            f_initCapabilities(capabilitiesDocument[url], layer, wmsLayer, timeEnabled);
+            f_initCapabilities(capabilitiesDocument[url], layerId, layer, wmsLayer, timeEnabled);
         });
 
     }
 
 }
 
-function f_initCapabilities(capabilitiesDoc, layer, wmsLayer, timeEnabled) {
+function f_initCapabilities(capabilitiesDoc, layerId, layer, wmsLayer, timeEnabled) {
     var wmsTopLayer = capabilitiesDoc.Capability.Layer;
     var wmsLayerCapabilities = f_getLayerByName(wmsTopLayer.Layer, layer);
     if (wmsLayerCapabilities === null)
         return;
     //get dimension
-    capabilities[layer] = wmsLayerCapabilities;
+    capabilities[layerId] = wmsLayerCapabilities;
     if (timeEnabled) {
-        f_initTimeDimesion(wmsLayerCapabilities, layer);
+        f_initTimeDimesion(wmsLayerCapabilities, layerId, layer);
         //change visibility of time selection
         wmsLayer.on('change:visible', function () {
             //set visibility for time selection
             if (this.getVisible())
-                $(timeSelection[layer].div_selector).removeClass('hidden');
+                $(timeSelection[layerId].div_selector).removeClass('hidden');
             else
-                $(timeSelection[layer].div_selector).addClass('hidden');
+                $(timeSelection[layerId].div_selector).addClass('hidden');
         });
     }
     //get legend and set attribution
     var legendUrl = f_getLegendUrlFromCapabilities(wmsLayerCapabilities);
+	//set proxy, if defined
+    for(var proxy in proxies) {
+        if (legendUrl.startsWith(proxy)){
+            legendUrl = legendUrl.replace(proxy, proxies[proxy]);
+			break;
+		}
+    }
     //only add legend, if URL is valid
     urlExists(legendUrl, function(exists){
         if(exists)
-            f_setLegend(layer, legendUrl);
+            f_setLegend(layerId, layer, legendUrl);
     });
     //change visibility of legend
     wmsLayer.on('change:visible', function () {
         //return if legend is not set
-        if(legends[layer] === undefined)
+        if(legends[layerId] === undefined)
             return;
         //set visibility for time selection
         if (this.getVisible())
-            legends[layer].removeClass('hidden');
+            legends[layerId].removeClass('hidden');
         else
-            legends[layer].addClass('hidden');
+            legends[layerId].addClass('hidden');
     });
 }
 
@@ -238,22 +281,23 @@ function f_getLegendUrlFromLegend(legendURL) {
 /**
  * initialize time dimension for WMS layer
  * @param wmsLayerCapabilities WMS layer capabilities
+ * @param layerId layer id
  * @param layer WMS layer name
  */
-function f_initTimeDimesion(wmsLayerCapabilities, layer) {
+function f_initTimeDimesion(wmsLayerCapabilities, layerId, layer) {
     //init selector object
-    f_initTimeSelector(layer);
+    f_initTimeSelector(layerId, layer);
     //append selection divs for display
-    f_displayTimeSelection(layer);
+    f_displayTimeSelection(layerId, layer);
     //get dimension
     var dimension = f_getDimension(wmsLayerCapabilities, "time")
     if (dimension === null)
         return;
     var defaultValue = new Date(dimension.default);
     //parse date values
-    timeValues[layer] = f_getDateArray(dimension.values, ",");
+    timeValues[layerId] = f_getDateArray(dimension.values, ",");
     //parse date values
-    f_initTimeSelection(layer, defaultValue);
+    f_initTimeSelection(layerId, defaultValue);
 }
 
 /**
@@ -294,57 +338,59 @@ function f_getDimension(wmsLayer, name) {
 
 /**
  * initialize time selection display
+ * @param layerId layer id
  * @param layer layer name
  */
-function f_displayTimeSelection(layer) {
+function f_displayTimeSelection(layerId, layer) {
     $('#container_time').append('<div id="time_' + layer + '" class="container_time_layer hidden">' +
         '   <div class="time_section time_steps">' +
         '       <div class="time_title">Time selection for <b>' + layer + '</b></div>\n' +
-        '       <a href="#" class="time_step" title="previous" onclick="f_timeStep(\'' + layer + '\', -1)">&#x23f4;</a>' +
-        '       <a href="#" class="time_step" title="first" onclick="f_timeStep(\'' + layer + '\', -2)">&#x23ee;</a>' +
+        '       <a href="#" class="time_step" title="previous" onclick="f_timeStep(\'' + layerId + '\', -1)">&#x23f4;</a>' +
+        '       <a href="#" class="time_step" title="first" onclick="f_timeStep(\'' + layerId + '\', -2)">&#x23ee;</a>' +
         '   </div>' +
         '   <div class="time_section" title="Hours">\n' +
         '       <div class="time_label">H</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[3].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layerId].selection[3].div_name + '"></div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Minutes">\n' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[4].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layerId].selection[4].div_name + '"></div>\n' +
         '       <div class="time_label">M</div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Day">\n' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[2].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layerId].selection[2].div_name + '"></div>\n' +
         '       <div class="time_label">D</div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Month">\n' +
         '       <div class="time_label">M</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[1].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layerId].selection[1].div_name + '"></div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Year">\n' +
         '       <div class="time_label_adjust" >&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layer].selection[0].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layerId].selection[0].div_name + '"></div>\n' +
         '       <div class="time_label">Y</div>\n' +
         '   </div>\n' +
         '   <div class="time_section time_steps">' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <a href="#" class="time_step" title="last" onclick="f_timeStep(\'' + layer + '\', 2)">&#x23ed;</a>' +
-        '       <a href="#" class="time_step" title="next" onclick="f_timeStep(\'' + layer + '\', 1)">&#x23f5;</a>' +
+        '       <a href="#" class="time_step" title="last" onclick="f_timeStep(\'' + layerId + '\', 2)">&#x23ed;</a>' +
+        '       <a href="#" class="time_step" title="next" onclick="f_timeStep(\'' + layerId + '\', 1)">&#x23f5;</a>' +
         '   </div>' +
         '</div>');
 }
 
 /**
  * initialize time selector object for layer
+ * @param layerId layer id
  * @param layer layer name
  */
-function f_initTimeSelector(layer) {
+function f_initTimeSelector(layerId, layer) {
     var escapedLayer = f_jQueryEscape(layer);
-    timeSelection[layer] = {};
-    timeSelection[layer].div_name = layer;
-    timeSelection[layer].div_selector = '#time_' + escapedLayer;
-    timeSelection[layer].selection = [];
-    timeSelection[layer].selection[0] = {
+    timeSelection[layerId] = {};
+    timeSelection[layerId].div_name = layer;
+    timeSelection[layerId].div_selector = '#time_' + escapedLayer;
+    timeSelection[layerId].selection = [];
+    timeSelection[layerId].selection[0] = {
         'title': 'year',
         'div_name': layer + '_year',
         'div_selector': '#' + escapedLayer + '_year',
@@ -352,7 +398,7 @@ function f_initTimeSelector(layer) {
         'values': [],
         'selected': null
     };
-    timeSelection[layer].selection[1] = {
+    timeSelection[layerId].selection[1] = {
         'title': 'month',
         'div_name': layer + '_month',
         'div_selector': '#' + escapedLayer + '_month',
@@ -360,7 +406,7 @@ function f_initTimeSelector(layer) {
         'values': [],
         'selected': null
     };
-    timeSelection[layer].selection[2] = {
+    timeSelection[layerId].selection[2] = {
         'title': 'date',
         'div_name': layer + '_date',
         'div_selector': '#' + escapedLayer + '_date',
@@ -368,7 +414,7 @@ function f_initTimeSelector(layer) {
         'values': [],
         'selected': null
     };
-    timeSelection[layer].selection[3] = {
+    timeSelection[layerId].selection[3] = {
         'title': 'hours',
         'div_name': layer + '_hours',
         'div_selector': '#' + escapedLayer + '_hours',
@@ -376,7 +422,7 @@ function f_initTimeSelector(layer) {
         'values': [],
         'selected': null
     };
-    timeSelection[layer].selection[4] = {
+    timeSelection[layerId].selection[4] = {
         'title': 'minutes',
         'div_name': layer + '_minutes',
         'div_selector': '#' + escapedLayer + '_minutes',
@@ -384,26 +430,26 @@ function f_initTimeSelector(layer) {
         'values': [],
         'selected': null
     };
-    timeSelection[layer].filteredValues = [];
-    timeSelection[layer].isComplete = function () {
-        return timeSelection[layer].filteredValues.length === 1;
+    timeSelection[layerId].filteredValues = [];
+    timeSelection[layerId].isComplete = function () {
+        return timeSelection[layerId].filteredValues.length === 1;
     };
 }
 
 /**
  * set time selection for particular layer and index
- * @param layer layer name
+ * @param layerId layer id
  * @param index dimension index (0 = year, 1 = month, 2 = day, 3 = hours, 4 = minutes)
  * @param value value to be selected
  */
-function f_setTimeSelection(layer, index, value) {
-    if (timeSelection[layer].selection[index].selected === value)
+function f_setTimeSelection(layerId, index, value) {
+    if (timeSelection[layerId].selection[index].selected === value)
         return;
-    timeSelection[layer].selection[index].selected = value;
-    timeSelection[layer].filteredValues = f_filterTimeValues(layer);
+    timeSelection[layerId].selection[index].selected = value;
+    timeSelection[layerId].filteredValues = f_filterTimeValues(layerId);
     //change WMS timestamp, if time selection is complete
-    if (timeSelection[layer].isComplete() === true)
-        overlays[layer].getSource().updateParams({'TIME': timeSelection[layer].filteredValues[0].toISOString()});
+    if (timeSelection[layerId].isComplete() === true)
+        imageOverlays[layerId].getSource().updateParams({'TIME': timeSelection[layerId].filteredValues[0].toISOString()});
 }
 
 /**
@@ -417,21 +463,21 @@ function f_jQueryEscape(selector) {
 
 /**
  * initialize current time selection
- * @param layer layer name
+ * @param layerId layer id
  * @param value Date value
  */
-function f_initTimeSelection(layer, value) {
+function f_initTimeSelection(layerId, value) {
     //get array of available years
-    timeSelection[layer].selection[0].values = f_getDateElementArray(timeValues[layer], timeSelection[layer].selection[0].timeFunction);
+    timeSelection[layerId].selection[0].values = f_getDateElementArray(timeValues[layerId], timeSelection[layerId].selection[0].timeFunction);
     //init default value, if input value is a valid Date
     if (value instanceof Date && !isNaN(value.valueOf())) {
-        for (var i = 0; i < timeSelection[layer].selection.length; i++) {
-            f_updateTimeSelection(layer, i, value[timeSelection[layer].selection[i].timeFunction]());
+        for (var i = 0; i < timeSelection[layerId].selection.length; i++) {
+            f_updateTimeSelection(layerId, i, value[timeSelection[layerId].selection[i].timeFunction]());
         }
     }
     //start with selection of year
     else
-        f_updateTimeSelection(layer, 0, null);
+        f_updateTimeSelection(layerId, 0, null);
 }
 
 /**
@@ -475,18 +521,18 @@ function f_getDateElementArray(dArray, dateFunction) {
 }
 
 /**
- * filter current Date elements based on current selection for layer in timeSelection[layer]
- * @param layer layer name
+ * filter current Date elements based on current selection for layer in timeSelection[layerId]
+ * @param layerId layer id
  * @returns {Array} filtered Date values matching the current selection
  */
-function f_filterTimeValues(layer) {
+function f_filterTimeValues(layerId) {
     var filteredValues = [];
-    for (var i = 0; i < timeValues[layer].length; i++) {
-        var timestamp = timeValues[layer][i];
+    for (var i = 0; i < timeValues[layerId].length; i++) {
+        var timestamp = timeValues[layerId][i];
         var filter = true;
-        for (var j = 0; j < timeSelection[layer].selection.length; j++) {
-            var selected = timeSelection[layer].selection[j].selected;
-            if (selected !== null && timestamp[timeSelection[layer].selection[j].timeFunction]() !== selected)
+        for (var j = 0; j < timeSelection[layerId].selection.length; j++) {
+            var selected = timeSelection[layerId].selection[j].selected;
+            if (selected !== null && timestamp[timeSelection[layerId].selection[j].timeFunction]() !== selected)
                 filter = false;
         }
         if (filter)
@@ -497,29 +543,29 @@ function f_filterTimeValues(layer) {
 
 /**
  * update time selection for layer
- * @param layer layer name
+ * @param layerId layer id
  * @param index index for selected time sub-element
  * @param selectedValue value to be selected
  */
-function f_updateTimeSelection(layer, index, selectedValue) {
+function f_updateTimeSelection(layerId, index, selectedValue) {
     //remove selection for this and higher indices
-    for (var i = index; i < timeSelection[layer].selection.length; i++) {
-        f_unselectTime(layer, i);
+    for (var i = index; i < timeSelection[layerId].selection.length; i++) {
+        f_unselectTime(layerId, i);
     }
     //set selected value, if there is only one element to select
-    if (selectedValue === null && timeSelection[layer].selection[index].values.length === 1)
-        selectedValue = timeSelection[layer].selection[index].values[0];
+    if (selectedValue === null && timeSelection[layerId].selection[index].values.length === 1)
+        selectedValue = timeSelection[layerId].selection[index].values[0];
     //set current selection
-    var timeSelectionDiv = $(timeSelection[layer].selection[index].div_selector);
-    f_setTimeSelection(layer, index, selectedValue);
+    var timeSelectionDiv = $(timeSelection[layerId].selection[index].div_selector);
+    f_setTimeSelection(layerId, index, selectedValue);
     //add child elements with possible time values
-    for (i = 0; i < timeSelection[layer].selection[index].values.length; i++) {
-        var value = timeSelection[layer].selection[index].values[i];
+    for (i = 0; i < timeSelection[layerId].selection[index].values.length; i++) {
+        var value = timeSelection[layerId].selection[index].values[i];
         if (selectedValue !== null && value !== selectedValue)
             continue;
         var valueDiv = $('<div class="time_element' +
             (value === selectedValue ? ' time_element_selected' : '') +
-            '" onclick="f_updateTimeSelection(\'' + layer + '\',' + index + ',' + value + ')">' +
+            '" onclick="f_updateTimeSelection(\'' + layerId + '\',' + index + ',' + value + ')">' +
             f_getTimeValueDisplay(index, value) +
             '</div>');
         timeSelectionDiv.append(valueDiv);
@@ -527,38 +573,38 @@ function f_updateTimeSelection(layer, index, selectedValue) {
     //set style to selected
     timeSelectionDiv.parent().find('.time_label').addClass('time_label_active');
     //display child elements, if selectedValue is not null
-    if (selectedValue !== null && timeSelection[layer].selection[index + 1] !== void 0) {
-        timeSelection[layer].selection[index + 1].values = f_getDateElementArray(timeSelection[layer].filteredValues, timeSelection[layer].selection[index + 1].timeFunction);
-        f_updateTimeSelection(layer, index + 1, null);
+    if (selectedValue !== null && timeSelection[layerId].selection[index + 1] !== void 0) {
+        timeSelection[layerId].selection[index + 1].values = f_getDateElementArray(timeSelection[layerId].filteredValues, timeSelection[layerId].selection[index + 1].timeFunction);
+        f_updateTimeSelection(layerId, index + 1, null);
     }
 }
 
 /**
  * set time selection to defined value
- * @param layer name of time-enabled layer
+ * @param layerId id of time-enabled layer
  * @param value target time value
  */
-function f_timeStep(layer, value){
+function f_timeStep(layerId, value){
     //first value
     if(value === -2)
-        f_initTimeSelection(layer, timeValues[layer][0]);
+        f_initTimeSelection(layerId, timeValues[layerId][0]);
     //last value
     else if(value === 2)
-        f_initTimeSelection(layer, timeValues[layer][timeValues[layer].length - 1]);
+        f_initTimeSelection(layerId, timeValues[layerId][timeValues[layerId].length - 1]);
     else {
         //return if current selection is incomplete
-        if(!timeSelection[layer].isComplete)
+        if(!timeSelection[layerId].isComplete)
             return;
         //get current value
-        var currentValue = timeSelection[layer].filteredValues[0];
+        var currentValue = timeSelection[layerId].filteredValues[0];
         //get index of current value in list of values
-        var index = timeValues[layer].indexOf(currentValue);
+        var index = timeValues[layerId].indexOf(currentValue);
         //previous value (if current selection is not the first value)
         if(value === -1 && index >= 1)
-            f_initTimeSelection(layer, timeValues[layer][index - 1]);
+            f_initTimeSelection(layerId, timeValues[layerId][index - 1]);
         //next value (if current selection is not the last value)
-        else if(value === 1 && index < timeValues[layer].length - 1)
-            f_initTimeSelection(layer, timeValues[layer][index + 1]);
+        else if(value === 1 && index < timeValues[layerId].length - 1)
+            f_initTimeSelection(layerId, timeValues[layerId][index + 1]);
     }
 }
 
@@ -583,13 +629,13 @@ function f_getTimeValueDisplay(index, value) {
 
 /**
  * unselect current time selection
- * @param layer layer name
+ * @param layerId layer id
  * @param index index for time sub-element
  */
-function f_unselectTime(layer, index) {
-    f_setTimeSelection(layer, index, null);
-    $(timeSelection[layer].selection[index].div_selector).find('.time_element').remove();
-    $(timeSelection[layer].selection[index].div_selector).parent().find('.time_label').removeClass('time_label_active');
+function f_unselectTime(layerId, index) {
+    f_setTimeSelection(layerId, index, null);
+    $(timeSelection[layerId].selection[index].div_selector).find('.time_element').remove();
+    $(timeSelection[layerId].selection[index].div_selector).parent().find('.time_label').removeClass('time_label_active');
 }
 
 /******************************************************
@@ -599,47 +645,52 @@ function f_unselectTime(layer, index) {
  *****************************************************/
 
 var style_ezg = new ol.style.Style({
-    stroke: new ol.style.Stroke({color: '#0070C0', width: 1}),
-    fill: new ol.style.Fill({color: 'rgba(0,112,192,0.5)'})
+    stroke: new ol.style.Stroke({color: '#003C88', width: 1}),
+    fill: new ol.style.Fill({color: '#0070C0'})
 });
 var style_ezg_highlight = new ol.style.Style({
-    stroke: new ol.style.Stroke({color: '#DD2222', width: 1}),
-    fill: new ol.style.Fill({color: 'rgba(221,34,34,0.3)'})
+    stroke: new ol.style.Stroke({color: '#ff2626', width: 1}),
+    fill: new ol.style.Fill({color: 'rgba(255,38,38,.3)'})
 });
 
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto (GeoSN)", false, 1, 'base', false, 'Orthophoto &copy; LfULG. ', 0);
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Höhenmodell (GeoSN)", false, 1, 'base', false, 'Höhenmodell &copy; LfULG. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Höhenmodell SN", false, 1, 'base', false, 'Höhenmodell &copy; GeoSN. ', 0);
 
-f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
-f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
+//f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
+//f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radarkomposit (24h, DWD)", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 3);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radarvorhersage (2h, DWD)", false, 0.75, '', true, 'Radarvorhersage &copy; DWD. ', 4);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radarkomposit (5min, DWD)", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Niederschlag - 24h Mittel", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Niederschlag - 5min", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Niederschlag - 2h Vorhersage", false, 0.75, '', true, 'Radarvorhersage &copy; DWD. ', 4);
 
-//TODO: Vector overlays
-var layer_ezg_extruso = f_initGeoJSONLayer("https://extruso.bu.tu-dresden.de/sites/default/files/geodata/EZG_gesamt.geojson", style_ezg, "Pilot-Einzugsgebiete", false);
-var layer_ezg_extruso_highlight;
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Haupteinzugsgebiete SN", false, .5, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  style_ezg);
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Teileinzugsgebiete SN", false, .5, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  style_ezg);
 
 var default_view = new ol.View({projection: projection, center: center, zoom: 10});
 
 var map = new ol.Map({
-    controls: ol.control.defaults(),
+    controls: ol.control.defaults().extend([f_getMousePositionControl(coordDiv, "4326")]),
     layers: [
         new ol.layer.Group({
-            title: 'Kartengrundlage',
+            title: 'Base Maps',
             layers: Object.keys(baseLayers).map(function (key) {
                 return baseLayers[key];
             })
         }),
         new ol.layer.Group({
-            title: 'Overlays',
-            layers: Object.keys(overlays).map(function (key) {
-                return overlays[key];
+            title: 'Image Overlays',
+            layers: Object.keys(imageOverlays).map(function (key) {
+                return imageOverlays[key];
+            })
+        }),
+        new ol.layer.Group({
+            title: 'Vector Overlays',
+            layers: Object.keys(vectorOverlays).map(function (key) {
+                return vectorOverlays[key];
             })
         })
     ],
@@ -647,105 +698,147 @@ var map = new ol.Map({
     view: default_view
 });
 
+/*map.on('postrender', function(event){
+    console.log(map.getView().getResolution());
+});*/
+
+//mouse position control for map
+function f_getMousePositionControl(div, epsg) {
+    return new ol.control.MousePosition({
+        className: 'custom-mouse-position',
+        projection: 'EPSG:' + epsg,
+        target: document.getElementById(div),
+        coordinateFormat: ol.coordinate.createStringXY(5),
+        undefinedHTML: ''
+    });
+}
+
 var layerSwitcher = new ol.control.LayerSwitcher();
 map.addControl(layerSwitcher);
 
-var layer_ezg_extruso_overlay = new ol.layer.Vector({
+var feature_overlay = new ol.layer.Vector({
     source: new ol.source.Vector(),
     map: map,
     style: style_ezg_highlight
 });
 
-//TODO: generalize for vector data
-var displayEZGInfo = function (pixel) {
-    var feature = map.forEachFeatureAtPixel(pixel, function (feature) {
-        return feature;
-    });
-    var info = document.getElementById('info');
-    if (feature) {
-        var gewaesser = feature.get('GEWAESSER');
-        info.style.visibility = "visible";
-        info.innerHTML = 'Gewässer: ' + (gewaesser === null ? "n.a." : gewaesser) + '<br />Fläche: ' + feature.get('AREA').toFixed(2) + ' ha';
+function f_getFeatureInfo(feature) {
+    return feature.name + ": " + feature.getId();
+    //info.innerHTML = 'Gewässer: ' + (gewaesser === null ? "n.a." : gewaesser) + '<br />Fläche: ' + feature.get('AREA').toFixed(2) + ' ha';
+}
+
+function f_displayVectorInfo(pixel) {
+    var features = [];
+    var changed = false;
+    map.forEachFeatureAtPixel(pixel, function (feature, layer) {
+        feature.name = layer.name;
+        features.push(feature);
+    }, {layerFilter: function (layer) {
+        return layer.id in vectorOverlays;
+    }});
+    var infoDiv = document.getElementById('info');
+    if (features.length > 0) {
+        infoDiv.style.visibility = "visible";
+        //check for features that need to be removed from highlight
+        var i = vectorHighlight.length
+        while(i--){
+            if(features.indexOf(vectorHighlight[i]) === -1) {
+                vectorHighlight.splice(i, 1);
+                changed = true;
+            }
+        }
+        //check for features that need to be added to highlight
+        var info = [];
+        i = features.length
+        while(i--) {
+            info.push(f_getFeatureInfo(features[i]));
+            if(vectorHighlight.indexOf(features[i]) === -1) {
+                vectorHighlight.push(features[i]);
+                changed = true
+            }
+        }
+        infoDiv.innerHTML = info.join('<br>') || '(unknown)';
     } else {
-        info.innerHTML = '&nbsp;';
-        info.style.visibility = "hidden";
+        infoDiv.innerHTML = '&nbsp;';
+        infoDiv.style.visibility = "hidden";
+        if(vectorHighlight.length > 0) {
+            vectorHighlight.length = 0
+            changed = true
+        }
     }
-    if (feature !== layer_ezg_extruso_highlight) {
-        if (layer_ezg_extruso_highlight) {
-            layer_ezg_extruso_overlay.getSource().removeFeature(layer_ezg_extruso_highlight);
-        }
-        if (feature) {
-            layer_ezg_extruso_overlay.getSource().addFeature(feature);
-        }
-        layer_ezg_extruso_highlight = feature;
+    //add highlight features to overlay
+    if(changed){
+        feature_overlay.getSource().clear();
+        feature_overlay.getSource().addFeatures(features)
     }
 };
 
 map.on('pointermove', function (evt) {
-    if (evt.dragging || layer_ezg_extruso.visible === false) {
+    if (evt.dragging)
         return;
-    }
     var pixel = map.getEventPixel(evt.originalEvent);
-    displayEZGInfo(pixel);
+    f_displayVectorInfo(pixel);
 });
 
 /**
- * sort overlays based on input array with layer ids
- * @param currentSort input ids
+ * set sortable layer in legend
+ * @param id layer group id in legend
  */
-function f_sortLayers(currentSort) {
+function f_setSortableOverlays(id) {
+    $('#' + id).sortable({
+        //function called each time the layer list is sorted
+        stop: function(ev, ui) {
+            var items = $(id).sortable('refreshPositions').children();
+            f_sortLayers(items, id);
+        }
+    });
+}
+
+/**
+ * sort overlays based on input array with layer ids
+ * @param items sorted list of overlays
+ * @param id layer group id in legend
+ */
+function f_sortLayers(items, id) {
+    var currentSort = [];
+    $.each(items, function () {
+        currentSort.push($(this).children("input").attr("id"));
+    });
+    currentSort.reverse();
+    var overlays = [];
+    if(id === "imageOverlays")
+        overlays = imageOverlays;
+    else if(id === "vectorOverlays")
+        overlays = vectorOverlays;
+    //resort layers on map
     for (var layer in overlays) {
         overlays[layer].setZIndex((jQuery.inArray(overlays[layer].id, currentSort)) + 1);
     }
 }
 
-
-
-// $(function() {
-//     var values = f_getDateArray("2017-08-09T09:05:00.000Z,2017-08-09T09:10:00.000Z,2017-08-09T09:15:00.000Z,2017-08-09T09:20:00.000Z,2017-08-09T09:25:00.000Z,2017-08-09T09:30:00.000Z,2017-08-09T09:35:00.000Z,2017-08-09T09:40:00.000Z,2017-08-09T09:45:00.000Z,2017-08-09T09:50:00.000Z,2017-08-09T09:55:00.000Z,2017-08-09T10:00:00.000Z,2017-08-09T10:05:00.000Z,2017-08-09T10:10:00.000Z,2017-08-09T10:15:00.000Z,2017-08-09T10:20:00.000Z,2017-08-09T10:25:00.000Z,2017-08-09T10:30:00.000Z,2017-08-09T10:35:00.000Z,2017-08-09T10:40:00.000Z,2017-08-09T10:45:00.000Z,2017-08-09T10:50:00.000Z,2017-08-09T10:55:00.000Z,2017-08-09T11:00:00.000Z,2017-08-09T11:05:00.000Z,2017-08-09T11:10:00.000Z,2017-08-09T11:15:00.000Z,2017-08-09T11:20:00.000Z,2017-08-09T11:25:00.000Z,2017-08-09T11:30:00.000Z,2017-08-09T11:35:00.000Z,2017-08-09T11:40:00.000Z,2017-08-09T11:45:00.000Z,2017-08-09T11:50:00.000Z,2017-08-09T11:55:00.000Z,2017-08-09T12:00:00.000Z,2017-08-09T12:05:00.000Z,2017-08-09T12:10:00.000Z,2017-08-09T12:15:00.000Z,2017-08-09T12:20:00.000Z,2017-08-09T12:25:00.000Z,2017-08-09T12:30:00.000Z,2017-08-09T12:35:00.000Z,2017-08-09T12:40:00.000Z,2017-08-09T12:45:00.000Z,2017-08-09T12:50:00.000Z,2017-08-09T12:55:00.000Z,2017-08-09T13:00:00.000Z,2017-08-09T13:05:00.000Z,2017-08-09T13:10:00.000Z,2017-08-09T13:15:00.000Z,2017-08-09T13:20:00.000Z,2017-08-09T13:25:00.000Z,2017-08-09T13:30:00.000Z,2017-08-09T13:35:00.000Z,2017-08-09T13:40:00.000Z,2017-08-09T13:45:00.000Z,2017-08-09T13:50:00.000Z,2017-08-09T13:55:00.000Z,2017-08-09T14:00:00.000Z,2017-08-09T14:05:00.000Z,2017-08-09T14:10:00.000Z,2017-08-09T14:15:00.000Z,2017-08-09T14:20:00.000Z,2017-08-09T14:25:00.000Z,2017-08-09T14:30:00.000Z,2017-08-09T14:35:00.000Z,2017-08-09T14:40:00.000Z,2017-08-09T14:45:00.000Z,2017-08-09T14:50:00.000Z,2017-08-09T14:55:00.000Z,2017-08-09T15:00:00.000Z,2017-08-09T15:05:00.000Z,2017-08-09T15:10:00.000Z,2017-08-09T15:15:00.000Z,2017-08-09T15:20:00.000Z,2017-08-09T15:25:00.000Z,2017-08-09T15:30:00.000Z,2017-08-09T15:35:00.000Z,2017-08-09T15:40:00.000Z,2017-08-09T15:45:00.000Z,2017-08-09T15:50:00.000Z,2017-08-09T15:55:00.000Z,2017-08-09T16:00:00.000Z,2017-08-09T16:05:00.000Z,2017-08-09T16:10:00.000Z,2017-08-09T16:15:00.000Z,2017-08-09T16:20:00.000Z,2017-08-09T16:25:00.000Z,2017-08-09T16:30:00.000Z,2017-08-09T16:35:00.000Z,2017-08-09T16:40:00.000Z,2017-08-09T16:45:00.000Z,2017-08-09T16:50:00.000Z,2017-08-09T16:55:00.000Z,2017-08-09T17:00:00.000Z,2017-08-09T17:05:00.000Z,2017-08-09T17:10:00.000Z,2017-08-09T17:15:00.000Z,2017-08-09T17:20:00.000Z,2017-08-09T17:25:00.000Z,2017-08-09T17:30:00.000Z,2017-08-09T17:35:00.000Z,2017-08-09T17:40:00.000Z,2017-08-09T17:45:00.000Z,2017-08-09T17:50:00.000Z,2017-08-09T17:55:00.000Z,2017-08-09T18:00:00.000Z,2017-08-09T18:05:00.000Z,2017-08-09T18:10:00.000Z,2017-08-09T18:15:00.000Z,2017-08-09T18:20:00.000Z,2017-08-09T18:25:00.000Z,2017-08-09T18:30:00.000Z,2017-08-09T18:35:00.000Z,2017-08-09T18:40:00.000Z,2017-08-09T18:45:00.000Z,2017-08-09T18:50:00.000Z,2017-08-09T18:55:00.000Z,2017-08-09T19:00:00.000Z,2017-08-09T19:05:00.000Z,2017-08-09T19:10:00.000Z,2017-08-09T19:15:00.000Z,2017-08-09T19:20:00.000Z,2017-08-09T19:25:00.000Z,2017-08-09T19:30:00.000Z,2017-08-09T19:35:00.000Z,2017-08-09T19:40:00.000Z,2017-08-09T19:45:00.000Z,2017-08-09T19:50:00.000Z,2017-08-09T19:55:00.000Z,2017-08-09T20:00:00.000Z,2017-08-09T20:05:00.000Z,2017-08-09T20:10:00.000Z,2017-08-09T20:15:00.000Z,2017-08-09T20:20:00.000Z,2017-08-09T20:25:00.000Z,2017-08-09T20:30:00.000Z,2017-08-09T20:35:00.000Z,2017-08-09T20:40:00.000Z,2017-08-09T20:45:00.000Z,2017-08-09T20:50:00.000Z,2017-08-09T20:55:00.000Z,2017-08-09T21:00:00.000Z,2017-08-09T21:05:00.000Z,2017-08-09T21:10:00.000Z,2017-08-09T21:15:00.000Z,2017-08-09T21:20:00.000Z,2017-08-09T21:25:00.000Z,2017-08-09T21:30:00.000Z,2017-08-09T21:35:00.000Z,2017-08-09T21:40:00.000Z,2017-08-09T21:45:00.000Z,2017-08-09T21:50:00.000Z,2017-08-09T21:55:00.000Z,2017-08-09T22:00:00.000Z,2017-08-09T22:05:00.000Z,2017-08-09T22:10:00.000Z,2017-08-09T22:15:00.000Z,2017-08-09T22:20:00.000Z,2017-08-09T22:25:00.000Z,2017-08-09T22:30:00.000Z,2017-08-09T22:35:00.000Z,2017-08-09T22:40:00.000Z,2017-08-09T22:45:00.000Z,2017-08-09T22:50:00.000Z,2017-08-09T22:55:00.000Z,2017-08-09T23:00:00.000Z,2017-08-09T23:05:00.000Z,2017-08-09T23:10:00.000Z,2017-08-09T23:15:00.000Z,2017-08-09T23:20:00.000Z,2017-08-09T23:25:00.000Z,2017-08-09T23:30:00.000Z,2017-08-09T23:35:00.000Z,2017-08-09T23:40:00.000Z,2017-08-09T23:45:00.000Z,2017-08-09T23:50:00.000Z,2017-08-09T23:55:00.000Z,2017-08-10T00:00:00.000Z,2017-08-10T00:05:00.000Z,2017-08-10T00:10:00.000Z,2017-08-10T00:15:00.000Z,2017-08-10T00:20:00.000Z,2017-08-10T00:25:00.000Z,2017-08-10T00:30:00.000Z,2017-08-10T00:35:00.000Z,2017-08-10T00:40:00.000Z,2017-08-10T00:45:00.000Z,2017-08-10T00:50:00.000Z,2017-08-10T00:55:00.000Z,2017-08-10T01:00:00.000Z,2017-08-10T01:05:00.000Z,2017-08-10T01:10:00.000Z,2017-08-10T01:15:00.000Z,2017-08-10T01:20:00.000Z,2017-08-10T01:25:00.000Z,2017-08-10T01:30:00.000Z,2017-08-10T01:35:00.000Z,2017-08-10T01:40:00.000Z,2017-08-10T01:45:00.000Z,2017-08-10T01:50:00.000Z,2017-08-10T01:55:00.000Z,2017-08-10T02:00:00.000Z,2017-08-10T02:05:00.000Z,2017-08-10T02:10:00.000Z,2017-08-10T02:15:00.000Z,2017-08-10T02:20:00.000Z,2017-08-10T02:25:00.000Z,2017-08-10T02:30:00.000Z,2017-08-10T02:35:00.000Z,2017-08-10T02:40:00.000Z,2017-08-10T02:45:00.000Z,2017-08-10T02:50:00.000Z,2017-08-10T02:55:00.000Z,2017-08-10T03:00:00.000Z,2017-08-10T03:05:00.000Z,2017-08-10T03:10:00.000Z,2017-08-10T03:15:00.000Z,2017-08-10T03:20:00.000Z,2017-08-10T03:25:00.000Z,2017-08-10T03:30:00.000Z,2017-08-10T03:35:00.000Z,2017-08-10T03:40:00.000Z,2017-08-10T03:45:00.000Z,2017-08-10T03:50:00.000Z,2017-08-10T03:55:00.000Z,2017-08-10T04:00:00.000Z,2017-08-10T04:05:00.000Z,2017-08-10T04:10:00.000Z,2017-08-10T04:15:00.000Z,2017-08-10T04:20:00.000Z,2017-08-10T04:25:00.000Z,2017-08-10T04:30:00.000Z,2017-08-10T04:35:00.000Z,2017-08-10T04:40:00.000Z,2017-08-10T04:45:00.000Z,2017-08-10T04:50:00.000Z,2017-08-10T04:55:00.000Z,2017-08-10T05:00:00.000Z,2017-08-10T05:05:00.000Z,2017-08-10T05:10:00.000Z,2017-08-10T05:15:00.000Z,2017-08-10T05:20:00.000Z,2017-08-10T05:25:00.000Z,2017-08-10T05:30:00.000Z,2017-08-10T05:35:00.000Z,2017-08-10T05:40:00.000Z,2017-08-10T05:45:00.000Z,2017-08-10T05:50:00.000Z,2017-08-10T05:55:00.000Z,2017-08-10T06:00:00.000Z,2017-08-10T06:05:00.000Z,2017-08-10T06:10:00.000Z,2017-08-10T06:15:00.000Z,2017-08-10T06:20:00.000Z,2017-08-10T06:25:00.000Z,2017-08-10T06:30:00.000Z,2017-08-10T06:35:00.000Z,2017-08-10T06:40:00.000Z,2017-08-10T06:45:00.000Z,2017-08-10T06:50:00.000Z,2017-08-10T06:55:00.000Z,2017-08-10T07:00:00.000Z,2017-08-10T07:05:00.000Z,2017-08-10T07:10:00.000Z,2017-08-10T07:15:00.000Z,2017-08-10T07:20:00.000Z,2017-08-10T07:25:00.000Z,2017-08-10T07:30:00.000Z,2017-08-10T07:35:00.000Z,2017-08-10T07:40:00.000Z,2017-08-10T07:45:00.000Z,2017-08-10T07:50:00.000Z,2017-08-10T07:55:00.000Z,2017-08-10T08:00:00.000Z,2017-08-10T08:05:00.000Z,2017-08-10T08:10:00.000Z,2017-08-10T08:15:00.000Z,2017-08-10T08:20:00.000Z,2017-08-10T08:25:00.000Z,2017-08-10T08:30:00.000Z,2017-08-10T08:35:00.000Z,2017-08-10T08:40:00.000Z,2017-08-10T08:45:00.000Z,2017-08-10T08:50:00.000Z,2017-08-10T08:55:00.000Z,2017-08-10T09:00:00.000Z,2017-08-10T09:05:00.000Z");
-//
-//     var min = values[0];
-//     var max = values[values.length - 1]
-//     var range = max - min;
-//     var defaultValue = max;
-//     $("#time").html(defaultValue);
-//     var slider = $("#timeslider").slider({
-//         slide: function (event, ui) {
-//             var includeLeft = event.keyCode !== $.ui.keyCode.RIGHT;
-//             var includeRight = event.keyCode !== $.ui.keyCode.LEFT;
-//             var currentValue = findNearest(includeLeft, includeRight, ui.value);
-//             slider.slider('option', 'value', currentValue);
-//             $("#time").html(currentValue);
-//             return false;
-//         },
-//         create: function(event, ui){
-//             $(this).slider('value', defaultValue);
-//         }
-//     })
-//         .each(function () {
-//             for (var i = 0; i < values.length; i++) {
-//                 var el = $('<label class="label_tooltip" title="' + values[i] + '">|</label>').css('left', ((values[i] - min) / range * 100) + '%');
-//                 //$("#timeslider").append(el);
-//             }
-//         })
-//     function findNearest(includeLeft, includeRight, value) {
-//         var nearest = null;
-//         var diff = null;
-//         for (var i = 0; i < values.length; i++) {
-//             if ((includeLeft && values[i] <= value) || (includeRight && values[i] >= value)) {
-//                 var newDiff = Math.abs(value - values[i]);
-//                 if (diff === null || newDiff < diff) {
-//                     nearest = values[i];
-//                     diff = newDiff;
-//                 }
-//             }
-//         }
-//         return nearest;
-//     }
-// });
-// $(document).tooltip();
-// $(document).ready(function(){
-//     $(document).tooltip({
-//         tooltipClass: "tooltip"
-//     });
-// });
+/**
+ * get opacity slider for specified layer
+ * @param lyr input layer
+ * @param lyrId layer id
+ * @param visible flag: layer is checked
+ */
+function f_getOpacitySlider(lyr, lyrId, visible){
+    var slider = $(document.createElement('li'));
+    slider.attr("id", lyrId + "_slider");
+    slider.className = "slider";
+    slider.slider({
+        min: 0,
+        max: 100,
+        step: 5,
+        value: lyr.getOpacity() * 100,
+        slide: function(event, ui) {
+            lyr.setOpacity(ui.value / 100);
+        }
+    });
+    //set slider visibility
+    if(visible)
+        slider.show();
+    else
+        slider.hide();
+    return slider[0];
+}

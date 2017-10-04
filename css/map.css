@@ -12,7 +12,18 @@
     z-index: -10;
 }
 
-#coord { font-size: 0.9em; background-color: white; opacity: 0.8; z-index: 50; position: absolute; bottom: 0.5em; left: 0.5em; height: auto; visibility: hidden; }
+#coord {
+    font-size: 0.9em;
+    background-color: white;
+    color: #003C88;
+    opacity: 0.8;
+    z-index: 50;
+    position: absolute;
+    top: 5.6em;
+    left: 3em;
+    height: auto;
+    padding: 0 .3em;
+}
 
 #info { font-size: 0.9em; background-color: white; opacity: 0.8; z-index: 50; position: absolute; bottom: 0.5em; left: 0.5em; height: auto; padding: 0 0.5em; border: 1px solid #0070C0; visibility: hidden; }
 
@@ -139,8 +150,24 @@
     background-color:transparent!important;
 }
 
+.legendDiv {
+    display: table;
+}
+
 .layer-switcher .panel {
     color: #003C88;
+}
+
+.ui-slider {
+    width:150px;
+    margin:.3em 0 .5em 1.5em;
+    height: .3em !important;
+    background-color: rgba(0, 60, 136, .7) !important
+}
+
+.ui-slider .ui-slider-handle {
+    border-radius: 50%;
+    top: -.4em !important;
 }
 
 

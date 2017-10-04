@@ -106,20 +106,10 @@
         this.renderLayers_(this.getMap(), ul);
 
         /**
-         * set sortable class
+         * set sortable overlays
          */
-        $("#sortableOverlays").sortable({
-            //function called each time the layer list is sorted
-            stop: function(ev, ui) {
-                var items = $('#sortableOverlays').sortable('refreshPositions').children();
-                var currentSort = [];
-                $.each(items, function () {
-                    currentSort.push($(this).children("input").attr("id"));
-                });
-                currentSort.reverse();
-                f_sortLayers(currentSort);
-            }
-        });
+        f_setSortableOverlays("imageOverlays");
+        f_setSortableOverlays("vectorOverlays");
 
     };
 
@@ -168,6 +158,16 @@
     ol.control.LayerSwitcher.prototype.setVisible_ = function (lyr, visible) {
         var map = this.getMap();
         lyr.setVisible(visible);
+
+        /**
+         * change corresponding slider visibility
+         */
+        var slider = $('#' + lyr.id + "_slider");
+        if(visible)
+            slider.show();
+        else
+            slider.hide();
+
         if (visible && lyr.get('type') === 'base') {
             // Hide all other base layers regardless of grouping
             ol.control.LayerSwitcher.forEachRecursive(map, function (l, idx, a) {
@@ -215,10 +215,15 @@
             /**
              * add sortable to overlays
              */
-            if(lyrTitle === "Overlays")
-                ul.setAttribute("id", "sortableOverlays");
+            if(lyrTitle === "Image Overlays")
+                ul.setAttribute("id", "imageOverlays");
+            else if(lyrTitle === "Vector Overlays")
+                ul.setAttribute("id", "vectorOverlays");
 
         } else {
+
+            var legendDiv = document.createElement('div');
+            legendDiv.className = 'legendDiv';
 
             li.className = 'layer';
             var input = document.createElement('input');
@@ -232,8 +237,13 @@
             input.checked = lyr.get('visible');
             input.onchange = function (e) {
                 this_.setVisible_(lyr, e.target.checked);
+                /**
+                 * render panel to show opacity slider
+                 */
+                layerSwitcher.renderPanel();
             };
-            li.appendChild(input);
+
+            legendDiv.appendChild(input);
 
             label.htmlFor = lyrId;
             label.innerHTML = lyrTitle;
@@ -243,7 +253,13 @@
                 label.className += ' disabled';
             }
 
-            li.appendChild(label);
+            legendDiv.appendChild(label);
+            li.appendChild(legendDiv);
+
+            /**
+             * append opacity slider
+             */
+            li.appendChild(f_getOpacitySlider(lyr, lyrId, input.checked));
 
         }
 

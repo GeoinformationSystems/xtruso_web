@@ -183,6 +183,7 @@ li.dropdown:hover .dropdown-content {
     display: flex;
     width: auto;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 .flex-item-tar {
@@ -191,6 +192,8 @@ li.dropdown:hover .dropdown-content {
     text-align: center;
     text-decoration: none;
     color: black;
+    min-width: 200px;
+    max-width: 300px;
 }
 
 .flex-item-tar a:link {
@@ -209,6 +212,8 @@ li.dropdown:hover .dropdown-content {
     margin: 10px;
     text-align: left;
     padding: 5px;
+    min-width: 200px;
+    max-width: 300px;
 }
 
 .flex-item-dis a {
@@ -221,8 +226,9 @@ li.dropdown:hover .dropdown-content {
 }
 
 .flex-item-fun {
-    max-width: 30%;
     padding: 20px;
+    margin: 10px;
+    min-width: 200px;
 }
 
 .flex-item-fun img {
