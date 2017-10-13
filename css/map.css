@@ -13,19 +13,17 @@
 }
 
 #coord {
-    font-size: 0.9em;
+    font-size: 0.8em;
     background-color: white;
     color: #003C88;
     opacity: 0.8;
     z-index: 50;
     position: absolute;
-    top: 5.6em;
+    top: 6.5em;
     left: 3em;
     height: auto;
     padding: 0 .3em;
 }
-
-#info { font-size: 0.9em; background-color: white; opacity: 0.8; z-index: 50; position: absolute; bottom: 0.5em; left: 0.5em; height: auto; padding: 0 0.5em; border: 1px solid #0070C0; visibility: hidden; }
 
 .ol-zoom { top: 5em !important; }
 
@@ -48,6 +46,73 @@
     bottom: .5em;
     left: .5em;
     z-index: 10;
+    display: flex;
+    width: auto;
+    justify-content: center;
+    flex-flow: row nowrap;
+    align-items: flex-end;
+}
+
+#legend {
+    float:left;
+}
+
+#info_select {
+    font-size: 0.9em;
+    color: #003C88;
+    background-color: white;
+    opacity: 0.8;
+    z-index: 50;
+    float: left;
+    height: auto;
+    padding: 0 0.5em;
+    display:none;
+    max-height:400px;
+    overflow-y: auto;
+}
+
+#info_highlight {
+    font-size: 0.8em;
+    color: red;
+    background-color: white;
+    opacity: 0.8;
+    z-index: 50;
+    float: left;
+    height: auto;
+    padding: 0 0.5em;
+    margin-left:.2em;
+    display:none;
+}
+
+.property_layer {
+    font-size:0.8em;
+}
+
+.property_id {
+    color: #003C88;
+}
+
+.property_name {
+    font-size: 0.8em;
+    color: #003C88;
+    margin-left: 1em;
+}
+
+.property_value {
+    font-size: 0.8em;
+    color: black;
+}
+
+.property_link {
+    text-decoration: none;
+    font-size: 0.8em;
+    color: #003C88;
+    margin-left: 1em;
+}
+
+.property_link:hover {
+    color: #001fff;
+    cursor: pointer;
 }
 
 .legend {

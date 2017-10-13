@@ -10,8 +10,11 @@ var baseLayers = {};
 var imageOverlays = {};
 //collection of vector overlays
 var vectorOverlays = {};
-//highlight features
-var vectorHighlight = [];
+//collection of sensor overlays
+var sensorOverlays = {};
+//feature collections
+var featureHighlight = new ol.Collection();
+var featureSelection = new ol.Collection();
 //collection of WMS layer capabilities documents
 var capabilitiesDocument = {};
 var capabilities = {};
@@ -21,8 +24,18 @@ var timeValues = {};
 var timeSelection = {};
 //object storing legend divs for WMS layers
 var legends = {};
-//coordinate div
-var coordDiv = "coord"
+//div names
+var coordDiv = document.getElementById("coord");
+var infoSelectDiv = $('#info_select');
+var infoHighlightDiv = $('#info_highlight');
+var legendDiv = $('#legend');
+//initial view
+var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
+var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
+var zoom = 10;
+//sensor hub endpoint
+var sensorHubURL = "https://search.opensensorweb.de/v1/sensor/search";
+var sensorHubAPI = "https://api.opensensorweb.de/v0";
 
 /**
  * set of proxies to access services blocked by same-origin policy
@@ -94,10 +107,10 @@ function f_initWMSLayer(baseUrl, layer, title, visible, opacity, type, timeEnabl
 function f_setLegend(layerId, layer, legendUrl) {
     if(legendUrl === null)
         return;
-    //add legend to container_legend
+    //add legend to legendDiv
     var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
     legends[layerId] = legend;
-    $('#container_legend').append(legend);
+    legendDiv.append(legend);
 }
 
 function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution, zIndex, maxResolution, style) {
@@ -128,6 +141,94 @@ function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution
     vectorLayer.id = f_escapeSelector(baseUrl + ":" + layer);
     vectorLayer.name = layer;
     vectorOverlays[vectorLayer.id] = vectorLayer;
+}
+
+function f_getSensorHubQuery(network, extent){
+    extent = ol.proj.transformExtent(extent, projection, "EPSG:4326");
+    return {
+        "size" : 10000,
+        "query" : {
+            "bool" : {
+                "must" : {
+                    "match_all" : {}
+                },
+                "filter" : [{
+                    "terms":{ "networkCode":[network] }
+                },
+                    [{
+                        "geo_bounding_box":{
+                            "geometry" : {
+                                "top_left" : {"lon":extent[0], "lat":extent[3]},
+                                "bottom_right" : {"lon":extent[2], "lat":extent[1]}
+                            }
+                        }
+                    }]
+                ]
+            }
+        },
+        "_source" : ["geometry", "networkCode", "topic", "deviceCode", "sensorCode"]
+    };
+}
+
+function f_initSensorHubLayer(network, title, visible, attribution, zIndex, style){
+    //init layer with empty source
+    var sensorLayer = new ol.layer.Vector({
+        title: title,
+        visible: visible,
+        source: new ol.source.Vector(),
+        style: style,
+        zIndex: zIndex
+    });
+    sensorLayer.id = f_escapeSelector(network);
+    sensorLayer.name = network;
+    sensorOverlays[network] = sensorLayer;
+    //init ol loader for sensor hub data
+    var sensorLoader = function(extent, resolution, projection) {
+        $.ajax({
+            url: sensorHubURL,
+            type: "POST",
+            dataType: "json",
+            data: JSON.stringify(f_getSensorHubQuery(network, extent)),
+            success: function(response){
+                var featureCollection = {
+                    type: 'FeatureCollection',
+                    features: []
+                };
+                var featureObjects = response.hits.hits;
+                featureObjects.forEach(function(featureObject){
+                    featureSource = featureObject["_source"];
+                    featureCollection.features.push({
+                        type: 'Feature',
+                        id: featureSource["sensorCode"],
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [ featureSource["geometry"].lon, featureSource["geometry"].lat ]
+                        },
+                        properties: {
+                            sensorCode: featureSource["sensorCode"],
+                            deviceCode: featureSource["deviceCode"],
+                            networkCode: featureSource["networkCode"],
+                            topic: featureSource["topic"]
+                        }
+                    });
+                });
+                var format = new ol.format.GeoJSON();
+                sensorOverlays[network].getSource().addFeatures(format.readFeatures(featureCollection, {
+                    featureProjection: projection
+                }));
+            }
+        })
+    };
+    //init sensor source
+    var sensorSource = new ol.source.Vector({
+        format: new ol.format.GeoJSON(),
+        attribution: attribution,
+        loader: sensorLoader,
+        zIndex: 100,
+        strategy: ol.loadingstrategy.bbox
+    });
+    //set sensor layer source
+    sensorLayer.setSource(sensorSource);
 }
 
 /**
@@ -644,36 +745,68 @@ function f_unselectTime(layerId, index) {
  *
  *****************************************************/
 
-var style_ezg = new ol.style.Style({
-    stroke: new ol.style.Stroke({color: '#003C88', width: 1}),
-    fill: new ol.style.Fill({color: '#0070C0'})
-});
-var style_ezg_highlight = new ol.style.Style({
-    stroke: new ol.style.Stroke({color: '#ff2626', width: 1}),
-    fill: new ol.style.Fill({color: 'rgba(255,38,38,.3)'})
-});
+/**
+ * create an ol style
+ * @param strokeColor stroke color
+ * @param strokeWidth stroke width
+ * @param fillColor fill color
+ * @param radius image (circle) radius
+ * @returns style oject
+ */
+function f_createStyle(strokeColor, strokeWidth, fillColor, radius){
+    return new ol.style.Style({
+        stroke: new ol.style.Stroke({color: strokeColor, width: strokeWidth}),
+        fill: new ol.style.Fill({color: fillColor}),
+        image: new ol.style.Circle({
+            radius: radius,
+            fill: new ol.style.Fill({
+                color: fillColor
+            }),
+            stroke: new ol.style.Stroke({
+                color: strokeColor,
+                width: strokeWidth
+            })
+        })
+    });
+}
 
-var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
-var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Höhenmodell SN", false, 1, 'base', false, 'Höhenmodell &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Niederschlag - 24h Mittel", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 3);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Niederschlag - 5min", false, 0.75, '', true, 'Radarkomposit &copy; DWD. ', 5);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Niederschlag - 2h Vorhersage", false, 0.75, '', true, 'Radarvorhersage &copy; DWD. ', 4);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Haupteinzugsgebiete SN", false, .5, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  style_ezg);
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Teileinzugsgebiete SN", false, .5, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  style_ezg);
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Main-catchments SN", false, .5, "Main-catchments &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Sub-catchments SN", false, .5, "Sub-catchments &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
 
-var default_view = new ol.View({projection: projection, center: center, zoom: 10});
+f_initSensorHubLayer("HWIMS", "Water level and discharge", false, "HWIMS &copy; LHWZ. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
 
+/**
+ * create layerswitcher object (is referenced from ol3-layerswitcher for rendering onchange)
+ */
+var layerSwitcher = new ol.control.LayerSwitcher();
+
+/**
+ * create map object
+ * @type {ol.Map}
+ */
 var map = new ol.Map({
-    controls: ol.control.defaults().extend([f_getMousePositionControl(coordDiv, "4326")]),
+    controls: ol.control.defaults().extend([
+        new ol.control.MousePosition({
+            className: 'custom-mouse-position',
+            projection: 'EPSG:4326',
+            target: coordDiv,
+            coordinateFormat: ol.coordinate.createStringXY(5),
+            undefinedHTML: ''
+        }),
+        layerSwitcher
+    ]),
     layers: [
         new ol.layer.Group({
             title: 'Base Maps',
@@ -692,96 +825,168 @@ var map = new ol.Map({
             layers: Object.keys(vectorOverlays).map(function (key) {
                 return vectorOverlays[key];
             })
+        }),
+        new ol.layer.Group({
+            title: 'Sensor Overlays',
+            layers: Object.keys(sensorOverlays).map(function (key) {
+                return sensorOverlays[key];
+            })
         })
     ],
     target: 'map',
-    view: default_view
-});
-
-/*map.on('postrender', function(event){
-    console.log(map.getView().getResolution());
-});*/
-
-//mouse position control for map
-function f_getMousePositionControl(div, epsg) {
-    return new ol.control.MousePosition({
-        className: 'custom-mouse-position',
-        projection: 'EPSG:' + epsg,
-        target: document.getElementById(div),
-        coordinateFormat: ol.coordinate.createStringXY(5),
-        undefinedHTML: ''
-    });
-}
-
-var layerSwitcher = new ol.control.LayerSwitcher();
-map.addControl(layerSwitcher);
-
-var feature_overlay = new ol.layer.Vector({
-    source: new ol.source.Vector(),
-    map: map,
-    style: style_ezg_highlight
-});
-
-function f_getFeatureInfo(feature) {
-    return feature.name + ": " + feature.getId();
-    //info.innerHTML = 'Gewässer: ' + (gewaesser === null ? "n.a." : gewaesser) + '<br />Fläche: ' + feature.get('AREA').toFixed(2) + ' ha';
-}
-
-function f_displayVectorInfo(pixel) {
-    var features = [];
-    var changed = false;
-    map.forEachFeatureAtPixel(pixel, function (feature, layer) {
-        feature.name = layer.name;
-        features.push(feature);
-    }, {layerFilter: function (layer) {
-        return layer.id in vectorOverlays;
-    }});
-    var infoDiv = document.getElementById('info');
-    if (features.length > 0) {
-        infoDiv.style.visibility = "visible";
-        //check for features that need to be removed from highlight
-        var i = vectorHighlight.length
-        while(i--){
-            if(features.indexOf(vectorHighlight[i]) === -1) {
-                vectorHighlight.splice(i, 1);
-                changed = true;
-            }
-        }
-        //check for features that need to be added to highlight
-        var info = [];
-        i = features.length
-        while(i--) {
-            info.push(f_getFeatureInfo(features[i]));
-            if(vectorHighlight.indexOf(features[i]) === -1) {
-                vectorHighlight.push(features[i]);
-                changed = true
-            }
-        }
-        infoDiv.innerHTML = info.join('<br>') || '(unknown)';
-    } else {
-        infoDiv.innerHTML = '&nbsp;';
-        infoDiv.style.visibility = "hidden";
-        if(vectorHighlight.length > 0) {
-            vectorHighlight.length = 0
-            changed = true
-        }
-    }
-    //add highlight features to overlay
-    if(changed){
-        feature_overlay.getSource().clear();
-        feature_overlay.getSource().addFeatures(features)
-    }
-};
-
-map.on('pointermove', function (evt) {
-    if (evt.dragging)
-        return;
-    var pixel = map.getEventPixel(evt.originalEvent);
-    f_displayVectorInfo(pixel);
+    view: new ol.View({projection: projection, center: center, zoom: zoom}),
+    interactions: ol.interaction.defaults().extend([
+        f_getSelectInteraction(),
+        f_getHighlightInteraction()
+    ])
 });
 
 /**
- * set sortable layer in legend
+ * get select interaction
+ */
+function f_getSelectInteraction() {
+    var interactionSelect = new ol.interaction.Select({
+        condition: ol.events.condition.click,
+        multi: true,
+        style: f_createStyle('#00c828', 1, 'rgba(0,200,40,.1)', 4),
+        filter: function (feature, layer) {
+            if (!layer || !(layer.id in vectorOverlays || layer.id in sensorOverlays))
+                return false;
+            if (feature.layer === undefined)
+                feature.layer = layer.name;
+            return true;
+        },
+        features: featureSelection
+    });
+    interactionSelect.on('select', function () {
+        if (featureSelection.getLength() > 0) {
+            infoSelectDiv.show();
+            infoSelectDiv.html(f_getHTMLFeatureInfo(featureSelection, "*", true, true));
+        } else {
+            infoSelectDiv.html('&nbsp;');
+            infoSelectDiv.hide();
+        }
+    });
+    return interactionSelect;
+}
+
+/**
+* get highlight interaction
+*/
+function f_getHighlightInteraction() {
+    var interactionHighlight = new ol.interaction.Select({
+        condition: ol.events.condition.pointerMove,
+        multi: true,
+        style: f_createStyle('#FF0000', 1, 'rgba(255,0,0,.1)', 4),
+        layers: function (layer) {
+            return layer && (layer.id in vectorOverlays || layer.id in sensorOverlays);
+        },
+        features: featureHighlight
+    });
+    interactionHighlight.on('select', function () {
+        if (featureHighlight.getLength() > 0) {
+            infoHighlightDiv.show();
+            infoHighlightDiv.html(f_getHTMLFeatureInfo(featureHighlight, [], false, false));
+        } else {
+            infoHighlightDiv.html('&nbsp;');
+            infoHighlightDiv.hide();
+        }
+    });
+    return interactionHighlight;
+}
+
+/**
+ * get feature by id
+ * @param featureId
+ */
+function f_getFeatureById(featureId) {
+    var feature = null;
+    this.featureSelection.forEach(function (f) {
+        if (f.getId() === featureId)
+            feature = f;
+    });
+    return feature;
+}
+
+/**
+ * highlight feature (used for hover on feature id)
+ * @param featureId feature id
+ */
+function f_highlightFeatureById(featureId){
+    f_clearHighlight();
+    var feature = f_getFeatureById(featureId);
+    if(feature !== null)
+        featureHighlight.push(feature);
+}
+
+/**
+ * clear highlight
+ */
+function f_clearHighlight() {
+    featureHighlight.clear();
+    infoHighlightDiv.html('&nbsp;');
+    infoHighlightDiv.hide();
+}
+
+/**
+ * get HTML feature info
+ * @param features input features
+ * @param properties visible properties ("*" for all properties)
+ * @param showLayer flag: show layer name id available
+ * @param highlight flag: set highlight interaction for hover
+ * @returns string feature info string
+ */
+function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
+    var html = "";
+    features.forEach(function(f) {
+        html += f_getHTMLFeatureId(f, showLayer, highlight);
+        var f_properties = (properties === "*" ? f.getProperties() : properties);
+        for (var property in f_properties) {
+            if (!property || property === 'geometry')
+                continue;
+            html += "<span class='property_name'>" + property + ":</span> " + "<span class='property_value'>" + f.get(property) + "</span><br>";
+        }
+        if(properties.length !== 0 && f.get("sensorCode") !== undefined){
+            html += "<a class='property_link' href='" + f_getSensorHubLink(f.get('networkCode'), f.get('deviceCode'), f.get('sensorCode'), false) + "'>Link to SensorHub API</a><br>";
+            html += "<a class='property_link' href='" + f_getSensorHubLink(f.get('networkCode'), f.get('deviceCode'), f.get('sensorCode'), true) + "'>Download Measurements</a><br>";
+        }
+    });
+    return html;
+}
+
+/**
+ * get Link to SensorHub
+ * @param networkCode sensor network
+ * @param deviceCode device identifier
+ * @param sensorCode sensor identifier
+ * @param measurements flag: link to raw measurements
+ * @returns {string} link to SensorHub
+ */
+function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements){
+    var url = sensorHubAPI + "/networks/" + networkCode + "/devices/" + deviceCode + "/sensors/" + sensorCode;
+    if(measurements)
+        url += "/measurements/raw?timeFormat=interval";
+    return url;
+}
+
+/**
+ * get HTML representation of a feature id
+ * @param feature input feature
+ * @param showLayer flag: show layer name
+ * @param highlight flag: set highlight interaction for hover
+ * @returns string HTML string
+ */
+function f_getHTMLFeatureId(feature, showLayer, highlight){
+    var html = "<span class='property_id'";
+    var featureId = feature.getId();
+    if (highlight && typeof featureId !== 'undefined')
+        html += " onmouseover='f_highlightFeatureById(\"" + featureId + "\")' onmouseout='f_clearHighlight()'";
+    html += ">" + (showLayer && feature.layer !== undefined ? "<span class='property_layer'>" + feature.layer + ":</span> " : "") + featureId + "</span><br>";
+    return html;
+}
+
+/**
+ * set sortable layers in legend
  * @param id layer group id in legend
  */
 function f_setSortableOverlays(id) {
