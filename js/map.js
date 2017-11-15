@@ -24,11 +24,16 @@ var timeValues = {};
 var timeSelection = {};
 //object storing legend divs for WMS layers
 var legends = {};
-//div names
-var coordDiv = document.getElementById("coord");
-var infoSelectDiv = $('#info_select');
-var infoHighlightDiv = $('#info_highlight');
-var legendDiv = $('#legend');
+//div elements
+var dom_coordDiv = document.getElementById("coord");
+var jq_coordDiv = $("#coord");
+var jq_legendDiv = $("#container_legend");
+var jq_highlightDiv = $('#highlight_info');
+var jq_graphDiv = $("#container_graph");
+var jq_infoDiv = $("#container_info");
+var jq_timeDiv = $("#container_time");
+//D3 graph object
+var d3Graph = new D3Graph("container_graph");
 //initial view
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
@@ -36,6 +41,17 @@ var zoom = 10;
 //sensor hub endpoint
 var sensorHubURL = "https://search.opensensorweb.de/v1/sensor/search";
 var sensorHubAPI = "https://api.opensensorweb.de/v0";
+//array with link identifiers for data download
+var sensorHubDownloadAnchors = {};
+var sensorHubMeasurementLinks = {};
+var sensorHubMeasurements = {};
+//array with measurement intervals that can be requested for download
+var now = new Date();
+var sensorHubDownloadIntervals = {
+    "14 Days": "start=" + new Date(new Date().setDate(now.getDate() - 14)).toISOString() + "&end=" + now.toISOString(),      //last 14 days
+    "1 Year": "start=" + new Date(new Date().setYear(now.getFullYear() - 1)).toISOString() + "&end=" + now.toISOString(),    //last year
+    "All": ""                                                                                                                //all measurements
+};
 
 /**
  * set of proxies to access services blocked by same-origin policy
@@ -107,10 +123,10 @@ function f_initWMSLayer(baseUrl, layer, title, visible, opacity, type, timeEnabl
 function f_setLegend(layerId, layer, legendUrl) {
     if(legendUrl === null)
         return;
-    //add legend to legendDiv
+    //add legend to jq_legendDiv
     var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
     legends[layerId] = legend;
-    legendDiv.append(legend);
+    jq_legendDiv.append(legend);
 }
 
 function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution, zIndex, maxResolution, style) {
@@ -751,12 +767,20 @@ function f_unselectTime(layerId, index) {
  * @param strokeWidth stroke width
  * @param fillColor fill color
  * @param radius image (circle) radius
+ * @param dashed flag: dashed stroke
  * @returns style oject
  */
-function f_createStyle(strokeColor, strokeWidth, fillColor, radius){
+function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
     return new ol.style.Style({
-        stroke: new ol.style.Stroke({color: strokeColor, width: strokeWidth}),
-        fill: new ol.style.Fill({color: fillColor}),
+        stroke: new ol.style.Stroke({
+            color: strokeColor,
+            width: strokeWidth,
+            lineDash: lineDash
+        }),
+        fill: new ol.style.Fill({
+            color: fillColor,
+            opacity: 0.1
+        }),
         image: new ol.style.Circle({
             radius: radius,
             fill: new ol.style.Fill({
@@ -764,7 +788,8 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius){
             }),
             stroke: new ol.style.Stroke({
                 color: strokeColor,
-                width: strokeWidth
+                width: strokeWidth,
+                lineDash: lineDash
             })
         })
     });
@@ -801,7 +826,7 @@ var map = new ol.Map({
         new ol.control.MousePosition({
             className: 'custom-mouse-position',
             projection: 'EPSG:4326',
-            target: coordDiv,
+            target: dom_coordDiv,
             coordinateFormat: ol.coordinate.createStringXY(5),
             undefinedHTML: ''
         }),
@@ -837,18 +862,33 @@ var map = new ol.Map({
     view: new ol.View({projection: projection, center: center, zoom: zoom}),
     interactions: ol.interaction.defaults().extend([
         f_getSelectInteraction(),
+        f_getBBoxInteraction(),
         f_getHighlightInteraction()
     ])
+});
+
+/**
+ * update info container, if length of selected features changed
+ */
+featureSelection.on('change:length', function (evt) {
+    if (featureSelection.getLength() > 0) {
+        jq_infoDiv.html('');
+        jq_infoDiv.append(f_getHTMLFeatureInfo(featureSelection, "*", true, true));
+        jq_infoDiv.fadeIn(100);
+    } else {
+        jq_infoDiv.html('');
+        jq_infoDiv.hide();
+    }
 });
 
 /**
  * get select interaction
  */
 function f_getSelectInteraction() {
-    var interactionSelect = new ol.interaction.Select({
+    return new ol.interaction.Select({
         condition: ol.events.condition.click,
         multi: true,
-        style: f_createStyle('#00c828', 1, 'rgba(0,200,40,.1)', 4),
+        style: f_createStyle('#ffbf00', 2, '#ffbf00', 4, []),
         filter: function (feature, layer) {
             if (!layer || !(layer.id in vectorOverlays || layer.id in sensorOverlays))
                 return false;
@@ -858,16 +898,38 @@ function f_getSelectInteraction() {
         },
         features: featureSelection
     });
-    interactionSelect.on('select', function () {
-        if (featureSelection.getLength() > 0) {
-            infoSelectDiv.show();
-            infoSelectDiv.html(f_getHTMLFeatureInfo(featureSelection, "*", true, true));
-        } else {
-            infoSelectDiv.html('&nbsp;');
-            infoSelectDiv.hide();
+}
+
+/**
+ * get bbox selection
+ */
+function f_getBBoxInteraction() {
+    var interactionBBox = new ol.interaction.DragBox({
+        condition: ol.events.condition.platformModifierKeyOnly,
+    });
+    interactionBBox.on('boxend', function() {
+        var extent = interactionBBox.getGeometry().getExtent();
+        //add features from vector overlays
+        for (var layer in vectorOverlays) {
+            if(vectorOverlays[layer].getVisible() === true){
+                vectorOverlays[layer].getSource().forEachFeatureIntersectingExtent(extent, function (feature) {
+                    featureSelection.push(feature);
+                });
+            }
+        }
+        //add features from sensor overlays
+        for (layer in sensorOverlays) {
+            if(sensorOverlays[layer].getVisible() === true){
+                sensorOverlays[layer].getSource().forEachFeatureIntersectingExtent(extent, function (feature) {
+                    featureSelection.push(feature);
+                });
+            }
         }
     });
-    return interactionSelect;
+    interactionBBox.on('boxstart', function() {
+        featureSelection.clear();
+    });
+    return interactionBBox;
 }
 
 /**
@@ -877,7 +939,7 @@ function f_getHighlightInteraction() {
     var interactionHighlight = new ol.interaction.Select({
         condition: ol.events.condition.pointerMove,
         multi: true,
-        style: f_createStyle('#FF0000', 1, 'rgba(255,0,0,.1)', 4),
+        style: f_createStyle('#ff0000', 3, 'rgba(255,0,0,0.1)', 6, []),
         layers: function (layer) {
             return layer && (layer.id in vectorOverlays || layer.id in sensorOverlays);
         },
@@ -885,11 +947,15 @@ function f_getHighlightInteraction() {
     });
     interactionHighlight.on('select', function () {
         if (featureHighlight.getLength() > 0) {
-            infoHighlightDiv.show();
-            infoHighlightDiv.html(f_getHTMLFeatureInfo(featureHighlight, [], false, false));
+            var featureIds = "";
+            featureHighlight.forEach(function(f) {
+                featureIds += f_getHTMLFeatureId(f, false, false).append($('<br>')).html();
+            });
+            jq_highlightDiv.fadeIn(100);
+            jq_highlightDiv.html(featureIds);
         } else {
-            infoHighlightDiv.html('&nbsp;');
-            infoHighlightDiv.hide();
+            jq_highlightDiv.html('&nbsp;');
+            jq_highlightDiv.hide();
         }
     });
     return interactionHighlight;
@@ -924,8 +990,8 @@ function f_highlightFeatureById(featureId){
  */
 function f_clearHighlight() {
     featureHighlight.clear();
-    infoHighlightDiv.html('&nbsp;');
-    infoHighlightDiv.hide();
+    jq_highlightDiv.html('&nbsp;');
+    jq_highlightDiv.hide();
 }
 
 /**
@@ -937,21 +1003,182 @@ function f_clearHighlight() {
  * @returns string feature info string
  */
 function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
-    var html = "";
+
+    var infoDiv = $('<div>');
     features.forEach(function(f) {
-        html += f_getHTMLFeatureId(f, showLayer, highlight);
+
+        var networkCode = f.get('networkCode');
+        var deviceCode = f.get('deviceCode');
+        var sensorCode = f.get('sensorCode');
+
+        //create element with feature id as text
+        var featureInfoDiv = $('<div>', {
+            'class': 'info_item'
+        }).append($('<hr>')).append(f_getHTMLFeatureId(f, showLayer, highlight));
+
+        //add properties
+        var featurePropertyDiv = $('<div>', {
+            'class': 'property_div'
+        });
         var f_properties = (properties === "*" ? f.getProperties() : properties);
         for (var property in f_properties) {
             if (!property || property === 'geometry')
                 continue;
-            html += "<span class='property_name'>" + property + ":</span> " + "<span class='property_value'>" + f.get(property) + "</span><br>";
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_name',
+                text: property + ": "
+            }));
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_value',
+                text: f.get(property)
+            }));
+            featurePropertyDiv.append($('<br>'));
         }
+        //create SensorHub information
         if(properties.length !== 0 && f.get("sensorCode") !== undefined){
-            html += "<a class='property_link' href='" + f_getSensorHubLink(f.get('networkCode'), f.get('deviceCode'), f.get('sensorCode'), false) + "'>Link to SensorHub API</a><br>";
-            html += "<a class='property_link' href='" + f_getSensorHubLink(f.get('networkCode'), f.get('deviceCode'), f.get('sensorCode'), true) + "'>Download Measurements</a><br>";
+
+            //add API link for sensor information
+            featurePropertyDiv.append($('<a>', {
+                'class': 'property_name property_link',
+                'href': f_getSensorHubLink(networkCode, deviceCode, sensorCode, false, null),
+                text: 'Sensor Information',
+                click: function(){
+                    window.open(this.href);
+                    return false;
+                }
+            })).append($('<br>'));
+
+            //create download links for definded measurement intervals
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_name',
+                text: "Download Measurements: "
+            }));
+            for(var interval in sensorHubDownloadIntervals) {
+                var id = sensorCode + "_" + interval;
+                var downloadId = "download_" + id;
+                var downloadUrl = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals[interval]);
+                var downloadLink = $('<a>', {
+                    id: downloadId
+                });
+                downloadLink.downloadUrl = downloadUrl;
+                downloadLink.format = "text/csv";
+                downloadLink.filename = "measurements_" + id + ".csv";
+                sensorHubDownloadAnchors[id] = downloadLink;
+                featurePropertyDiv.append($('<span>', {
+                    'class': 'property_link property_link_selection',
+                    id: id,
+                    text: interval,
+                    click: function(evt){
+                        var id = evt.target.id;
+                        var anchor = sensorHubDownloadAnchors[id];
+                        $.ajax({
+                            url: anchor.downloadUrl,
+                            type: 'GET',
+                            dataType: 'binary',
+                            headers: {Accept: anchor.format, 'Content-Type': anchor.format},
+                            processData: false,
+                            id: id,
+                            success: function(result) {
+                                var anchor = sensorHubDownloadAnchors[this.id];
+                                var windowUrl = window.URL || window.webkitURL;
+                                var url = windowUrl.createObjectURL(result);
+                                anchor.prop('href', url);
+                                anchor.prop('download', anchor.filename);
+                                anchor.get(0).click();
+                                windowUrl.revokeObjectURL(url);
+                            }
+                        });
+                    }
+                }).append(downloadLink));
+            }
+            featurePropertyDiv.append($('<br>'));
+
+            //show graph with latest measurements and predictions
+            var graphId = sensorCode + "_graph";
+            sensorHubMeasurementLinks[graphId] = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals['14 Days']);
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_name property_link',
+                text: 'Show Graph',
+                id: graphId,
+                //set graph
+                click: function(evt){
+                    //reset graph container
+                    jq_graphDiv.empty();
+                    //close graph, if shown already
+                    if(d3Graph.activeGraph(evt.target.id)){
+                        f_removeGraph(evt.target.id);
+                        //hide graph container, if no graph is displayed
+                        if(d3Graph.numberOfGraphs() === 0)
+                            jq_graphDiv.hide();
+                        return;
+                    }
+                    //show graph for selected sensor
+                    jq_graphDiv.fadeIn(100);
+                    //check, if measurements are available in cache
+                    if(sensorHubMeasurements[evt.target.id] !== undefined && sensorHubMeasurements[evt.target.id].length > 0){
+                        f_addGraph(evt.target.id);
+                    }
+                    //request measurements
+                    else {
+                        var url = sensorHubMeasurementLinks[evt.target.id];
+                        $.ajax({
+                            url: url,
+                            type: 'GET',
+                            id: evt.target.id,
+                            success: function (result) {
+                                f_setMeasurements(this.id, result);
+                                f_addGraph(this.id);
+                            }
+                        });
+                    }
+                }
+            })).append($('<br>'));
         }
+
+        featureInfoDiv.append(featurePropertyDiv);
+        infoDiv.append(featureInfoDiv);
     });
-    return html;
+
+    return infoDiv;
+}
+
+/**
+ * add SensorHub measurements to cache
+ * @param graphId graph identifier
+ * @param measurements measurements from sensor
+ */
+function f_setMeasurements(graphId, measurements) {
+
+    var samplingIntervals = [];
+
+    //set measurement values for D3
+    measurements.forEach(function(d, i) {
+        d[0] = d3.isoParse(d.begin);
+        d[1] = +d.v;
+        if(i > 0)
+            samplingIntervals.push(d[0] - measurements[i-1][0]);
+    });
+
+    //set max sampling gap = twice the sampling interval (median of all sampling intervals)
+    var maxGap = samplingIntervals[Math.floor(samplingIntervals.length / 2)] * 2;
+
+    //check for gaps
+    var lastValidMeasurement = measurements[0];
+    var updateIndex = 0;
+    var measurementsWithMarkedGap = [];
+    for (var i = 0; i < measurements.length; i++) {
+        if(measurements[i][0] - lastValidMeasurement[0] > maxGap) {
+            //add null value, used to show gap in visualization
+            measurementsWithMarkedGap[i + updateIndex++] = {
+                0: new Date(measurements[i][0] - maxGap),
+                1: null
+            };
+        }
+        measurementsWithMarkedGap[i + updateIndex] = measurements[i];
+        lastValidMeasurement = measurements[i];
+    }
+    //add measurements to cache
+    sensorHubMeasurements[graphId] = measurementsWithMarkedGap;
 }
 
 /**
@@ -960,13 +1187,38 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
  * @param deviceCode device identifier
  * @param sensorCode sensor identifier
  * @param measurements flag: link to raw measurements
+ * @param interval time interval for measurements
  * @returns {string} link to SensorHub
  */
-function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements){
+function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements, interval){
     var url = sensorHubAPI + "/networks/" + networkCode + "/devices/" + deviceCode + "/sensors/" + sensorCode;
-    if(measurements)
-        url += "/measurements/raw?timeFormat=interval";
-    return url;
+    if(!measurements)
+        return url;
+    //add measurement request
+    return url + "/measurements/raw?" + interval;
+}
+
+/**
+ * initialize measurement graph
+ * @param graphId graph id
+ */
+function f_addGraph(graphId) {
+
+    //get measurements
+    var measurements = sensorHubMeasurements[graphId];
+    if(measurements === undefined || measurements.length === 0)
+        return;
+
+    d3Graph.addGraph(graphId, graphId, measurements);
+
+}
+
+/**
+ * initialize measurement graph
+ * @param graphId graph id
+ */
+function f_removeGraph(graphId) {
+    d3Graph.removeGraph(graphId);
 }
 
 /**
@@ -977,13 +1229,38 @@ function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements){
  * @returns string HTML string
  */
 function f_getHTMLFeatureId(feature, showLayer, highlight){
-    var html = "<span class='property_id'";
     var featureId = feature.getId();
-    if (highlight && typeof featureId !== 'undefined')
-        html += " onmouseover='f_highlightFeatureById(\"" + featureId + "\")' onmouseout='f_clearHighlight()'";
-    html += ">" + (showLayer && feature.layer !== undefined ? "<span class='property_layer'>" + feature.layer + ":</span> " : "") + featureId + "</span><br>";
-    return html;
+    var idDiv = $('<div>', {
+        'class': 'property_id'
+    });
+    //add layer name, if requested and available
+    if(showLayer && feature.layer !== undefined)
+        idDiv.append($('<span>', {
+            'class': 'property_layer',
+            text: feature.layer + ": "
+        }));
+    //add feature id
+    idDiv.append(featureId);
+    //add feature highlight on hover, if requested and fid is available
+    if (highlight && featureId !== undefined) {
+        idDiv.mouseover(function() {
+            f_highlightFeatureById(featureId)
+        });
+        idDiv.mouseout(function() {
+            f_clearHighlight();
+        });
+    }
+    return idDiv;
 }
+
+/**
+ * open/close feature property information on click on feature id
+ */
+$(function () {
+    jq_infoDiv.on('click', '.property_id', function(){
+        $(this).next('.property_div').slideToggle(500);
+    });
+});
 
 /**
  * set sortable layers in legend
@@ -1022,28 +1299,54 @@ function f_sortLayers(items, id) {
 }
 
 /**
- * get opacity slider for specified layer
- * @param lyr input layer
- * @param lyrId layer id
- * @param visible flag: layer is checked
+ * change position( of elements, if certain elements are shown/hidden
  */
-function f_getOpacitySlider(lyr, lyrId, visible){
-    var slider = $(document.createElement('li'));
-    slider.attr("id", lyrId + "_slider");
-    slider.className = "slider";
-    slider.slider({
-        min: 0,
-        max: 100,
-        step: 5,
-        value: lyr.getOpacity() * 100,
-        slide: function(event, ui) {
-            lyr.setOpacity(ui.value / 100);
-        }
-    });
-    //set slider visibility
-    if(visible)
-        slider.show();
-    else
-        slider.hide();
-    return slider[0];
-}
+
+$(function () {
+    var jq_zoomDiv = $(".ol-zoom");
+    function f_resetLeft(){
+        jq_coordDiv.css( { left : "3.5em" } );
+        jq_legendDiv.css( { left : "0" } );
+        jq_graphDiv.css( { left : "0" } );
+        jq_zoomDiv.css( { left : ".5em" } );
+    }
+    function f_resetBottom(){
+        jq_legendDiv.css( { bottom : "0" } );
+        jq_timeDiv.css( { bottom : "3em" } );
+    }
+    jq_infoDiv
+        .on('show', function() {
+            //reset left margin
+            f_resetLeft();
+            //determine width of info container, add width to left margin of elements
+            var width = jq_infoDiv.width();
+            jq_coordDiv.css( { left : parseInt(jq_coordDiv.position().left) + width + "px" } );
+            jq_legendDiv.css( { left : width + "px" } );
+            jq_graphDiv.css( { left : width - 1 + "px" } );
+            jq_zoomDiv.css( { left : parseInt(jq_zoomDiv.position().left) + width + "px" } );
+        })
+        .on("hide", function() {
+            f_resetLeft();
+            jq_graphDiv.hide();
+            jq_graphDiv.empty();
+        });
+    jq_graphDiv
+        .on('show', function() {
+            //reset left margin
+            f_resetBottom();
+            //determine height of graph container, add height to bottom margin of elements
+            var height = jq_graphDiv.height();
+            jq_legendDiv.css( { bottom : height + "px" } );
+            jq_timeDiv.css( { bottom : height + "px" } );
+        })
+        .on("hide", function() {
+            f_resetBottom();
+            d3Graph.empty(true);
+        });
+    $(document)
+        .mousemove( function(e) {
+            if(jq_highlightDiv.is(":visible"))
+                jq_highlightDiv.css({ 'bottom':$(window).height() - e.pageY + 5, 'left':e.pageX + 5 });
+        });
+
+});

@@ -345,3 +345,30 @@
     var LayerSwitcher = ol.control.LayerSwitcher;
     return LayerSwitcher;
 }));
+
+/**
+ * get opacity slider for specified layer
+ * @param lyr input layer
+ * @param lyrId layer id
+ * @param visible flag: layer is checked
+ */
+function f_getOpacitySlider(lyr, lyrId, visible){
+    var slider = $(document.createElement('li'));
+    slider.attr("id", lyrId + "_slider");
+    slider.className = "slider";
+    slider.slider({
+        min: 0,
+        max: 100,
+        step: 5,
+        value: lyr.getOpacity() * 100,
+        slide: function(event, ui) {
+            lyr.setOpacity(ui.value / 100);
+        }
+    });
+    //set slider visibility
+    if(visible)
+        slider.show();
+    else
+        slider.hide();
+    return slider[0];
+}

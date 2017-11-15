@@ -12,20 +12,49 @@
     z-index: -10;
 }
 
+a {
+    text-decoration: none;
+}
+
 #coord {
+    top: 6.5em;
+    left: 3.5em;
+    position: absolute;
+    font-size: 0.8em;
+    z-index: 50;
+    background-color: white;
+    color: black;
+    opacity: 0.8;
+    padding: 0 .3em;
+}
+
+#highlight_info {
     font-size: 0.8em;
     background-color: white;
     color: #003C88;
     opacity: 0.8;
-    z-index: 50;
-    position: absolute;
-    top: 6.5em;
-    left: 3em;
-    height: auto;
+    display:none;
     padding: 0 .3em;
+    position:absolute;
+    z-index:100;
 }
 
 .ol-zoom { top: 5em !important; }
+
+#container_info {
+    display: none;
+    width: 20%;
+    color: #003C88;
+    background-color: white;
+    opacity: 0.9;
+    position: absolute;
+    left: 0;
+    top: 70px;
+    bottom: 0;
+    z-index: 50;
+    overflow-y: auto;
+    border-right: 2px solid #003C88;
+}
 
 #container_time {
     bottom: 3em;
@@ -43,8 +72,8 @@
 
 #container_legend {
     position: fixed;
-    bottom: .5em;
-    left: .5em;
+    bottom: 0;
+    left: 0;
     z-index: 10;
     display: flex;
     width: auto;
@@ -53,35 +82,79 @@
     align-items: flex-end;
 }
 
-#legend {
-    float:left;
+.legend {
+    max-width: 300px;
+    max-height: 300px;
+    margin: .5em;
+    border: 1px solid #003C88;
+    vertical-align: bottom;
 }
 
-#info_select {
-    font-size: 0.9em;
-    color: #003C88;
-    background-color: white;
-    opacity: 0.8;
-    z-index: 50;
-    float: left;
-    height: auto;
-    padding: 0 0.5em;
-    display:none;
-    max-height:400px;
-    overflow-y: auto;
+.legend_bottom {
+    display: inline-block;
+    height: 100%;
+    vertical-align: bottom;
 }
 
-#info_highlight {
-    font-size: 0.8em;
-    color: red;
-    background-color: white;
-    opacity: 0.8;
-    z-index: 50;
-    float: left;
-    height: auto;
-    padding: 0 0.5em;
-    margin-left:.2em;
+#container_graph {
     display:none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right:0;
+    z-index: 10;
+    background-color: white;
+    opacity: 0.9;
+    height:30%;
+}
+
+.area {
+    fill: #003C88;
+    fill-opacity: 0.2;
+    clip-path: url(#clip);
+}
+
+.line {
+    fill: none;
+    stroke: #003C88;
+    stroke-width: 1.5px;
+    clip-path: url(#clip);
+}
+
+.brush .handle {
+    fill: red;
+}
+
+.brush .selection {
+    fill-opacity: 0.1;
+}
+
+.axis .tick text {
+    stroke: white;
+    stroke-width: 2;
+    paint-order: stroke;
+}
+
+#graph_overlay {
+    cursor: move;
+    fill: none;
+    pointer-events: all;
+}
+
+.tooltip_line {
+    stroke: #003C88;
+    stroke-width: 1px;
+    left: 10px;
+    opacity: 0;
+}
+
+.tooltip_text {
+    stroke: none;
+    font-size: .7em;
+}
+
+.info_item {
+    margin: 10px;
 }
 
 .property_layer {
@@ -90,6 +163,7 @@
 
 .property_id {
     color: #003C88;
+    cursor: pointer;
 }
 
 .property_name {
@@ -104,29 +178,23 @@
 }
 
 .property_link {
-    text-decoration: none;
-    font-size: 0.8em;
     color: #003C88;
-    margin-left: 1em;
+    font-size: 0.8em;
 }
 
 .property_link:hover {
-    color: #001fff;
+    color: #0054c4;
     cursor: pointer;
+    text-decoration: underline;
 }
 
-.legend {
-    max-width: 300px;
-    max-height: 300px;
-    margin-right: .5em;
-    border: 1px solid #003C88;
-    vertical-align: bottom;
+.property_link_selection {
+    padding: .1em .3em;
 }
 
-.legend_bottom {
-    display: inline-block;
-    height: 100%;
-    vertical-align: bottom;
+.property_graph {
+    height:200px;
+    background-color: red;
 }
 
 .time_title {
@@ -225,7 +293,7 @@
 
 .ui-slider {
     width:150px;
-    margin:.3em 0 .5em 1.5em;
+    margin:.3em 1.5em .5em 1.5em;
     height: .3em !important;
     background-color: rgba(0, 60, 136, .7) !important
 }

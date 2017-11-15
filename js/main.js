@@ -40,13 +40,25 @@ $(function () {
 });
 
 /**
+ * add show/hide events
+ */
+(function ($) {
+    $.each(['show', 'hide'], function (i, ev) {
+        var el = $.fn[ev];
+        $.fn[ev] = function () {
+            this.trigger(ev);
+            return el.apply(this, arguments);
+        };
+    });
+})(jQuery);
+
+/**
  * expand/collapse article content
  */
 $(function () {
     $(".article_title").click(function () {
         var $title = $(this);
-        var $content = $title.next();
-        $content.slideToggle(500);
+        $title.next().slideToggle(500);
         $title.toggleClass("collapsed");
         $title.toggleClass("expanded");
     });
@@ -62,3 +74,4 @@ $(document)
     .ajaxStop(function () {
         $('#loading_overlay').hide();
     });
+
