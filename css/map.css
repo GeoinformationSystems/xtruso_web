@@ -121,6 +121,11 @@ a {
     clip-path: url(#clip);
 }
 
+.dot {
+    stroke: none;
+    clip-path: url(#clip);
+}
+
 .brush .handle {
     fill: red;
 }

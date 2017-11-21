@@ -212,15 +212,16 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
                 };
                 var featureObjects = response.hits.hits;
                 featureObjects.forEach(function(featureObject){
-                    featureSource = featureObject["_source"];
+                    var featureSource = featureObject["_source"];
                     featureCollection.features.push({
                         type: 'Feature',
-                        id: featureSource["sensorCode"],
+                        id: featureSource["networkCode"] + featureSource["deviceCode"] + featureSource["sensorCode"],
                         geometry: {
                             type: 'Point',
                             coordinates: [ featureSource["geometry"].lon, featureSource["geometry"].lat ]
                         },
                         properties: {
+                            name: featureSource["sensorCode"],
                             sensorCode: featureSource["sensorCode"],
                             deviceCode: featureSource["deviceCode"],
                             networkCode: featureSource["networkCode"],
@@ -797,20 +798,21 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
 
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Main-catchments SN", false, .5, "Main-catchments &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Sub-catchments SN", false, .5, "Sub-catchments &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Main-catchments SN", false, .5, "Main-catchments &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Sub-catchments SN", false, .5, "Sub-catchments &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
 
-f_initSensorHubLayer("HWIMS", "Water level and discharge", false, "HWIMS &copy; LHWZ. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
+f_initSensorHubLayer("HWIMS", "LHWZ Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
+f_initSensorHubLayer("BAFG", "BAFG Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
 
 /**
  * create layerswitcher object (is referenced from ol3-layerswitcher for rendering onchange)
@@ -947,12 +949,12 @@ function f_getHighlightInteraction() {
     });
     interactionHighlight.on('select', function () {
         if (featureHighlight.getLength() > 0) {
-            var featureIds = "";
+            var featureNames = "";
             featureHighlight.forEach(function(f) {
-                featureIds += f_getHTMLFeatureId(f, false, false).append($('<br>')).html();
+                featureNames += f_getHTMLFeatureName(f, false).append($('<br>')).html();
             });
             jq_highlightDiv.fadeIn(100);
-            jq_highlightDiv.html(featureIds);
+            jq_highlightDiv.html(featureNames);
         } else {
             jq_highlightDiv.html('&nbsp;');
             jq_highlightDiv.hide();
@@ -1226,7 +1228,7 @@ function f_removeGraph(graphId) {
  * @param feature input feature
  * @param showLayer flag: show layer name
  * @param highlight flag: set highlight interaction for hover
- * @returns string HTML string
+ * @returns div element
  */
 function f_getHTMLFeatureId(feature, showLayer, highlight){
     var featureId = feature.getId();
@@ -1251,6 +1253,29 @@ function f_getHTMLFeatureId(feature, showLayer, highlight){
         });
     }
     return idDiv;
+}
+
+/**
+ * get HTML representation of a feature name
+ * @param feature input feature
+ * @param showLayer flag: show layer name
+ * @returns div element
+ */
+function f_getHTMLFeatureName(feature, showLayer){
+    if(feature.get("name") === undefined)
+        return f_getHTMLFeatureId(feature, showLayer, false);
+    var nameDiv = $('<div>', {
+        'class': 'property_id'
+    });
+    //add layer name, if requested and available
+    if(showLayer && feature.layer !== undefined)
+        nameDiv.append($('<span>', {
+            'class': 'property_layer',
+            text: feature.layer + ": "
+        }));
+    //add feature name
+    nameDiv.append(feature.get("name"));
+    return nameDiv;
 }
 
 /**

@@ -30,6 +30,10 @@ function D3Graph(div) {
     //selection function for tooltip
     this.bisectDate = d3.bisector(function(d) { return d[0]; }).left;
 
+    //time format for tooltip
+    this.timeLocale = "de-DE";
+    this.timeOptions = { };
+
     /**
      * check if graph id is among the active graphs
      * @param id graph id
@@ -143,6 +147,9 @@ function D3Graph(div) {
             //init timeline data
             graph.timelineValues = this.getTimelineValues(graph.xyValues);
 
+            //init timeline data
+            graph.xySingleValues = this.getSingleValues(graph.xyValues);
+
             //set timeline color range
             graph.chartColor = this.display.chart.colors(i);
             graph.timelineColor = this.getColorScale(graph.chartColor, graph.yMin, graph.yMax);
@@ -175,6 +182,9 @@ function D3Graph(div) {
                 .style("stroke", graph.chartColor)
                 .attr("d", graph.chart.line);
 
+            //append circles for values surrounded by null
+            this.appendSingleValues(graph, this.chart, i);
+
             //append y-axis
             this.chart.append("g")
                 .attr("class", "axis axis--y axis_" + i)
@@ -200,7 +210,7 @@ function D3Graph(div) {
                 .enter().append("rect")
                 .attr("x", function(d) { return activeD3.timeline.xScale(d[0]); }, activeD3)
                 .attr("y", this.display.timeline.height + height * i)
-                .attr("width", this.barWidth)
+                .attr("width", this.barWidth + 1)
                 .attr("height", height)
                 .style("stroke", "none")
                 .style("fill", function(d) { return graph.timelineColor(d[1]); });
@@ -245,7 +255,9 @@ function D3Graph(div) {
             .on("mousemove", function(){
                 activeD3.showTooltip(this);
             }, activeD3)
-            .on("mouseout", this.hideTooltip());
+            .on("mouseout", function() {
+                activeD3.hideTooltip();
+            }, activeD3);
 
         //append zoom functionality
         d3.select("#graph_overlay").call(this.zoom);
@@ -263,6 +275,30 @@ function D3Graph(div) {
             .curve(d3.curveMonotoneX)
             .x(function(d) { return xScale(d[0]); })
             .y(function(d) { return yScale(d[1]); })
+    };
+
+    /**
+     * append single values to chart
+     * @param graph input graph
+     * @param chart parent chart
+     * @param index current graph index
+     */
+    this.appendSingleValues = function(graph, chart, index) {
+        //do nothing, if no single values are present
+        if(graph.xySingleValues.length === 0)
+            return;
+        //remove previous collection
+        if(graph.singleValues !== undefined)
+            graph.singleValues.remove();
+        //create new collection for circles
+        graph.singleValues = this.chart.selectAll("dot_" + index)
+            .data(graph.xySingleValues)
+            .enter().append("circle")
+            .attr("r", 2)
+            .attr("cx", function (d) { return chart.xScale(d[0]); })
+            .attr("cy", function (d) { return graph.chart.yScale(d[1]); })
+            .style("fill", graph.chartColor)
+            .attr("class", "dot " + "dot_" + index);
     };
 
     /**
@@ -306,16 +342,23 @@ function D3Graph(div) {
             var closest = this.getClosestMeasurement(graph.xyValues, this.chart.xScale.invert(mouse_x));
             //get y position
             var mouse_y = d3.mouse(mousePosition)[1] + this.display.chart.top;
+
             //update tooltip text
             graph.tooltipText
-                .text(this.getTooltipText(graph.name, closest))
-                .style("opacity", 1)
+                .style('opacity', 1)
                 .attr('x', this.chart.xScale(closest[0]) + 3)
                 .attr('y', mouse_y - 10 - i * 15)
                 .style("fill", graph.chartColor);
-            //update tooltip text background
+            this.setTooltipText(graph.tooltipText, closest);
+
+            //reset x-position of tooltip text, if out-of-bounds
             var textNode = graph.tooltipText.node();
             var textBounds = textNode.getBBox();
+            var x_max = this.display.width - textBounds.width;
+            if(mouse_x > x_max)
+                graph.tooltipText.attr('x', x_max);
+
+            //update tooltip text background
             graph.tooltipTextBG
                 .attr("x", textBounds.x)
                 .attr("y", textBounds.y)
@@ -335,18 +378,27 @@ function D3Graph(div) {
     };
 
     /**
-     * get tooltip text for mouse location
-     * @param graphName name of the graph
+     * set tooltip text
+     * @param textBox input text box
      * @param closest closest measurement
      */
-    this.getTooltipText = function(graphName, closest) {
-        return closest[0] + "@" + graphName + ": " + closest[1]
+    this.setTooltipText = function(textBox, closest){
+        textBox.html(null);
+        textBox.append("tspan")
+            .text(this.formatDate(closest[0]) + ": ");
+        textBox.append("tspan")
+            .style('font-weight', 'bold')
+            .text(closest[1]);
     };
 
+    /**
+     * hide tooltip info
+     */
     this.hideTooltip = function() {
         this.graphs.forEach(function(graph) {
             graph.tooltipText.style("opacity", 0);
             graph.tooltipLine.style("opacity", 0);
+            graph.tooltipTextBG.style("opacity", 0);
         });
     };
 
@@ -427,7 +479,8 @@ function D3Graph(div) {
     };
 
     /**
-     * get measurements for context visualization, aggregates to reasonable number of measurements
+     * get values for context visualization, aggregates to reasonable number of measurements
+     * xyValues values used for timeline visualization
      */
     this.getTimelineValues = function(xyValues) {
         //define target interval
@@ -458,6 +511,27 @@ function D3Graph(div) {
     };
 
     /**
+     * get values for circle visualization, if line is not defined left and right of value
+     * @param xyValues
+     */
+    this.getSingleValues = function(xyValues){
+        var xySingleValues = [];
+        for (var j = 0; j < xyValues.length; j++) {
+            var maxIndex = xyValues.length - 1;
+            //add first value, if second value is null
+            if(j === 0 && xyValues.length > 1 && xyValues[1][1] === null)
+                xySingleValues.push(xyValues[j]);
+            //add last value, if previous value is null
+            else if(j === maxIndex && xyValues.length > 1 && xyValues[maxIndex - 1][1] === null)
+                xySingleValues.push(xyValues[j]);
+            //add value, if previous and next value is null
+            else if(j !== 0 && j !== maxIndex && xyValues[j-1][1] === null && xyValues[j+1][1] === null)
+                xySingleValues.push(xyValues[j]);
+        }
+        return xySingleValues;
+    };
+
+    /**
      * get color scale for timeline visualization
      * @param color corresponding chart color
      * @param min min value
@@ -481,6 +555,7 @@ function D3Graph(div) {
                 currentD3.chart.xScale.domain(s.map(currentD3.timeline.xScale.invert, currentD3.timeline.xScale));
                 currentD3.graphs.forEach(function(graph, i) {
                     currentD3.chart.select(".line_" + i).attr("d", graph.chart.line);
+                    currentD3.appendSingleValues(graph, currentD3.chart, i);
                 }, currentD3);
                 currentD3.chart.select(".axis--x").call(currentD3.chart.xAxis);
                 currentD3.svg.select("#graph_overlay").call(currentD3.zoom.transform, d3.zoomIdentity
@@ -503,10 +578,20 @@ function D3Graph(div) {
                 currentD3.chart.xScale.domain(t.rescaleX(currentD3.timeline.xScale).domain());
                 currentD3.graphs.forEach(function(graph, i) {
                     currentD3.chart.select(".line_" + i).attr("d", graph.chart.line);
+                    currentD3.appendSingleValues(graph, currentD3.chart, i);
                 }, currentD3);
                 currentD3.chart.select(".axis--x").call(currentD3.chart.xAxis);
                 currentD3.timeline.select(".brush").call(currentD3.brush.move, currentD3.chart.xScale.range().map(t.invertX, t));
             }, currentD3);
-    }
+    };
+
+    /**
+     * format time string for graph tooltip
+     * @param date input date
+     * @returns {string} formatted time string
+     */
+    this.formatDate = function(date){
+        return date.toLocaleString(this.timeLocale, this.timeOptions);
+    };
 
 }
