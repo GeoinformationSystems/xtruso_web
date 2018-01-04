@@ -182,7 +182,7 @@
      * Render all layers that are children of a group.
      * @private
      * @param {ol.layer.Base} lyr Layer to be rendered (should have a title property).
-     * @param {Number} idx Position in parent group list.
+     * @param {Number} idx Position in mxParent group list.
      */
     ol.control.LayerSwitcher.prototype.renderLayer_ = function (lyr, idx) {
 

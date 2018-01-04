@@ -28,7 +28,7 @@ function D3Graph(div) {
     this.display.chart.colors = d3.scaleOrdinal(d3.schemeCategory10);
 
     //selection function for tooltip
-    this.bisectDate = d3.bisector(function(d) { return d[0]; }).left;
+    this.bisectDate = d3.bisector(function(d) { return d['timestamp']; }).left;
 
     //time format for tooltip
     this.timeLocale = "de-DE";
@@ -57,11 +57,11 @@ function D3Graph(div) {
      * add graph
      * @param id graph identifier
      * @param name name of the graph for display
-     * @param xyValues xy values to be drawn (x = time)
+     * @param timeline xy values to be drawn (x = time)
      */
-    this.addGraph = function(id, name, xyValues) {
+    this.addGraph = function(id, name, timeline) {
 
-        if(id === undefined || xyValues === undefined || xyValues.length === 0)
+        if(id === undefined || timeline === undefined || timeline.length === 0)
             return;
 
         //create graph object
@@ -70,13 +70,13 @@ function D3Graph(div) {
         graph.name = name;
 
         //add values
-        graph.xyValues = xyValues;
+        graph.timeline = timeline;
 
         //get min and max for xy values
-        graph.xMin = d3.min(xyValues, function(d) {return d[0]; });
-        graph.xMax = d3.max(xyValues, function(d) {return d[0]; });
-        graph.yMin = d3.min(xyValues, function(d) {return d[1]; });
-        graph.yMax = d3.max(xyValues, function(d) {return d[1]; });
+        graph.xMin = d3.min(timeline, function(d) {return d['timestamp']; });
+        graph.xMax = d3.max(timeline, function(d) {return d['timestamp']; });
+        graph.yMin = d3.min(timeline, function(d) {return d['value']; });
+        graph.yMax = d3.max(timeline, function(d) {return d['value']; });
 
         //add graph to collection and update view
         this.graphs.push(graph);
@@ -145,10 +145,10 @@ function D3Graph(div) {
                 xMax = graph.xMax;
 
             //init timeline data
-            graph.timelineValues = this.getTimelineValues(graph.xyValues);
+            graph.timelineValues = this.getTimelineValues(graph.timeline);
 
             //init timeline data
-            graph.xySingleValues = this.getSingleValues(graph.xyValues);
+            graph.xySingleValues = this.getSingleValues(graph.timeline);
 
             //set timeline color range
             graph.chartColor = this.display.chart.colors(i);
@@ -174,13 +174,22 @@ function D3Graph(div) {
         this.graphs.forEach(function(graph, i) {
 
             graph.chart.line = this.getLineChart(this.chart.xScale, graph.chart.yScale);
+            graph.chart.area = this.getAreaChart(this.chart.xScale, graph.chart.yScale);
 
             //append line chart
             this.chart.append("path")
-                .datum(graph.xyValues)
+                .datum(graph.timeline)
                 .attr("class", "line " + "line_" + i)
                 .style("stroke", graph.chartColor)
                 .attr("d", graph.chart.line);
+
+            //append area chart
+            this.chart.append("path")
+                .datum(graph.timeline)
+                .attr("class", "area " + "area_" + i)
+                .style("fill", graph.chartColor)
+                .style("opacity", 0.2)
+                .attr("d", graph.chart.area);
 
             //append circles for values surrounded by null
             this.appendSingleValues(graph, this.chart, i);
@@ -208,12 +217,12 @@ function D3Graph(div) {
             this.timeline.selectAll()
                 .data(graph.timelineValues)
                 .enter().append("rect")
-                .attr("x", function(d) { return activeD3.timeline.xScale(d[0]); }, activeD3)
+                .attr("x", function(d) { return activeD3.timeline.xScale(d['timestamp']); }, activeD3)
                 .attr("y", this.display.timeline.height + height * i)
                 .attr("width", this.barWidth + 1)
                 .attr("height", height)
                 .style("stroke", "none")
-                .style("fill", function(d) { return graph.timelineColor(d[1]); });
+                .style("fill", function(d) { return graph.timelineColor(d['value']); });
 
         }, this);
 
@@ -271,16 +280,30 @@ function D3Graph(div) {
      */
     this.getLineChart = function(xScale, yScale) {
         return d3.line()
-            .defined(function(d) { return d[1] !== null; })
+            .defined(function(d) { return d['value'] !== null; })
             .curve(d3.curveMonotoneX)
-            .x(function(d) { return xScale(d[0]); })
-            .y(function(d) { return yScale(d[1]); })
+            .x(function(d) { return xScale(d['timestamp']); })
+            .y(function(d) { return yScale(d['value']); })
+    };
+
+    /**
+     * get area chart
+     * @param xScale x axis scale function
+     * @param yScale y axis scale function
+     */
+    this.getAreaChart = function(xScale, yScale) {
+        return d3.area()
+            .defined(function(d) { return d['value'] !== null; })
+            .curve(d3.curveMonotoneX)
+            .x(function(d) { return xScale(d['timestamp']); })
+            .y1(function(d) { return yScale(d['value']); })
+            .y0(this.display.chart.height);
     };
 
     /**
      * append single values to chart
      * @param graph input graph
-     * @param chart parent chart
+     * @param chart mxParent chart
      * @param index current graph index
      */
     this.appendSingleValues = function(graph, chart, index) {
@@ -295,24 +318,10 @@ function D3Graph(div) {
             .data(graph.xySingleValues)
             .enter().append("circle")
             .attr("r", 2)
-            .attr("cx", function (d) { return chart.xScale(d[0]); })
-            .attr("cy", function (d) { return graph.chart.yScale(d[1]); })
+            .attr("cx", function (d) { return chart.xScale(d['timestamp']); })
+            .attr("cy", function (d) { return graph.chart.yScale(d['value']); })
             .style("fill", graph.chartColor)
             .attr("class", "dot " + "dot_" + index);
-    };
-
-    /**
-     * get area chart
-     * @param xScale x axis scale function
-     * @param yScale y axis scale function
-     */
-    this.getAreaChart = function(xScale, yScale) {
-        return d3.area()
-            .defined(function(d) { return d[1] !== null; })
-            .curve(d3.curveMonotoneX)
-            .x(function(d) { return xScale(d[0]); })
-            .y1(function(d) { return yScale(d[1]); })
-            .y0(this.display.chart.height);
     };
 
     this.init = function() {
@@ -339,14 +348,14 @@ function D3Graph(div) {
 
             //get closest timestamp
             var mouse_x = d3.mouse(mousePosition)[0];
-            var closest = this.getClosestMeasurement(graph.xyValues, this.chart.xScale.invert(mouse_x));
+            var closest = this.getClosestMeasurement(graph.timeline, this.chart.xScale.invert(mouse_x));
             //get y position
             var mouse_y = d3.mouse(mousePosition)[1] + this.display.chart.top;
 
             //update tooltip text
             graph.tooltipText
                 .style('opacity', 1)
-                .attr('x', this.chart.xScale(closest[0]) + 3)
+                .attr('x', this.chart.xScale(closest['timestamp']) + 3)
                 .attr('y', mouse_y - 10 - i * 15)
                 .style("fill", graph.chartColor);
             this.setTooltipText(graph.tooltipText, closest);
@@ -368,8 +377,8 @@ function D3Graph(div) {
                 .style("opacity", ".75");
             //update tooltip line
             graph.tooltipLine
-                .attr("x1", this.chart.xScale(closest[0])).attr("x2", this.chart.xScale(closest[0]))
-                .attr("y1", graph.chart.yScale(closest[1]) + this.display.chart.top)
+                .attr("x1", this.chart.xScale(closest['timestamp'])).attr("x2", this.chart.xScale(closest['timestamp']))
+                .attr("y1", graph.chart.yScale(closest['value']) + this.display.chart.top)
                 .style("opacity", 1)
                 .style("stroke", graph.chartColor);
 
@@ -385,10 +394,10 @@ function D3Graph(div) {
     this.setTooltipText = function(textBox, closest){
         textBox.html(null);
         textBox.append("tspan")
-            .text(this.formatDate(closest[0]) + ": ");
+            .text(this.formatDate(closest['timestamp']) + ": ");
         textBox.append("tspan")
             .style('font-weight', 'bold')
-            .text(closest[1]);
+            .text(closest['value']);
     };
 
     /**
@@ -435,14 +444,14 @@ function D3Graph(div) {
 
     /**
      * get measurement closest to given timestamp
-     * @param xyValues input values
+     * @param timeline input values
      * @param date input timestamp
      * @returns {*} closest date
      */
-    this.getClosestMeasurement = function(xyValues, date) {
-        var target = this.bisectDate(xyValues, date, 1),
-            d0 = xyValues[target - 1],
-            d1 = xyValues[target];
+    this.getClosestMeasurement = function(timeline, date) {
+        var target = this.bisectDate(timeline, date, 1),
+            d0 = timeline[target - 1],
+            d1 = timeline[target];
         //check for first/last value of timeline
         if(d0 === undefined)
             return d1;
@@ -450,18 +459,18 @@ function D3Graph(div) {
             return d0;
         //check for null
         var i ;
-        if(d0[1] === null) {
+        if(d0['timestamp'] === null) {
             i = 2;
-            while (d0[1] === null)
-                d0 = xyValues[target - i++];
+            while (d0['value'] === null)
+                d0 = timeline[target - i++];
         }
-        if(d1[1] === null) {
+        if(d1['timestamp'] === null) {
             i = 1;
-            while (d1[1] === null)
-                d1 = xyValues[target + i++];
+            while (d1['value'] === null)
+                d1 = timeline[target + i++];
         }
         //get closest measurement
-        return date - d0[0] > d1[0] - date ? d1 : d0;
+        return date - d0['timestamp'] > d1['timestamp'] - date ? d1 : d0;
 
     };
 
@@ -480,18 +489,18 @@ function D3Graph(div) {
 
     /**
      * get values for context visualization, aggregates to reasonable number of measurements
-     * xyValues values used for timeline visualization
+     * timeline values used for timeline visualization
      */
-    this.getTimelineValues = function(xyValues) {
+    this.getTimelineValues = function(timeline) {
         //define target interval
-        var interval = (xyValues.length / this.display.width) * this.barWidth;
+        var interval = (timeline.length / this.display.width) * this.barWidth;
         //create target value intervals
         var valueIntervals = [];
-        for (var j = 0; j < xyValues.length; j++) {
+        for (var j = 0; j < timeline.length; j++) {
             var targetIndex = Math.round(j / interval);
             if (valueIntervals[targetIndex] === undefined)
                 valueIntervals[targetIndex] = [];
-            valueIntervals[targetIndex].push(xyValues[j]);
+            valueIntervals[targetIndex].push(timeline[j]);
         }
         //aggregate intervals
         var timelineValues = [];
@@ -501,9 +510,9 @@ function D3Graph(div) {
                 valueIntervals[j] = valueIntervals[j - 1];
             //add new measurement
             timelineValues.push({
-                0: valueIntervals[j][0][0],
-                1: Math.max.apply(Math, valueIntervals[j].map(function (d) {
-                    return d[1];
+                'timestamp': valueIntervals[j][0]['timestamp'],
+                'value': Math.max.apply(Math, valueIntervals[j].map(function (d) {
+                    return d['value'];
                 }))
             });
         }
@@ -512,21 +521,21 @@ function D3Graph(div) {
 
     /**
      * get values for circle visualization, if line is not defined left and right of value
-     * @param xyValues
+     * @param timeline
      */
-    this.getSingleValues = function(xyValues){
+    this.getSingleValues = function(timeline){
         var xySingleValues = [];
-        for (var j = 0; j < xyValues.length; j++) {
-            var maxIndex = xyValues.length - 1;
+        for (var j = 0; j < timeline.length; j++) {
+            var maxIndex = timeline.length - 1;
             //add first value, if second value is null
-            if(j === 0 && xyValues.length > 1 && xyValues[1][1] === null)
-                xySingleValues.push(xyValues[j]);
+            if(j === 0 && timeline.length > 1 && timeline[1]['value'] === null)
+                xySingleValues.push(timeline[j]);
             //add last value, if previous value is null
-            else if(j === maxIndex && xyValues.length > 1 && xyValues[maxIndex - 1][1] === null)
-                xySingleValues.push(xyValues[j]);
+            else if(j === maxIndex && timeline.length > 1 && timeline[maxIndex - 1]['value'] === null)
+                xySingleValues.push(timeline[j]);
             //add value, if previous and next value is null
-            else if(j !== 0 && j !== maxIndex && xyValues[j-1][1] === null && xyValues[j+1][1] === null)
-                xySingleValues.push(xyValues[j]);
+            else if(j !== 0 && j !== maxIndex && timeline[j-1]['timestamp'] === null && timeline[j+1]['value'] === null)
+                xySingleValues.push(timeline[j]);
         }
         return xySingleValues;
     };
@@ -553,11 +562,7 @@ function D3Graph(div) {
                     return; // ignore brush-by-zoom
                 var s = d3.event.selection || currentD3.timeline.xScale.range();
                 currentD3.chart.xScale.domain(s.map(currentD3.timeline.xScale.invert, currentD3.timeline.xScale));
-                currentD3.graphs.forEach(function(graph, i) {
-                    currentD3.chart.select(".line_" + i).attr("d", graph.chart.line);
-                    currentD3.appendSingleValues(graph, currentD3.chart, i);
-                }, currentD3);
-                currentD3.chart.select(".axis--x").call(currentD3.chart.xAxis);
+                currentD3.updateAfterZoomBrush();
                 currentD3.svg.select("#graph_overlay").call(currentD3.zoom.transform, d3.zoomIdentity
                     .scale(currentD3.display.width / (s[1] - s[0]))
                     .translate(-s[0], 0));
@@ -576,13 +581,21 @@ function D3Graph(div) {
                     return; // ignore zoom-by-brush
                 var t = d3.event.transform;
                 currentD3.chart.xScale.domain(t.rescaleX(currentD3.timeline.xScale).domain());
-                currentD3.graphs.forEach(function(graph, i) {
-                    currentD3.chart.select(".line_" + i).attr("d", graph.chart.line);
-                    currentD3.appendSingleValues(graph, currentD3.chart, i);
-                }, currentD3);
-                currentD3.chart.select(".axis--x").call(currentD3.chart.xAxis);
+                currentD3.updateAfterZoomBrush();
                 currentD3.timeline.select(".brush").call(currentD3.brush.move, currentD3.chart.xScale.range().map(t.invertX, t));
             }, currentD3);
+    };
+
+    /**
+     * update view after zoom or brush interaction
+     */
+    this.updateAfterZoomBrush = function() {
+        this.graphs.forEach(function(graph, i) {
+            this.chart.select(".line_" + i).attr("d", graph.chart.line);
+            this.chart.select(".area_" + i).attr("d", graph.chart.area);
+            this.appendSingleValues(graph, this.chart, i);
+        }, this);
+        this.chart.select(".axis--x").call(this.chart.xAxis);
     };
 
     /**

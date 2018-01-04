@@ -1,0 +1,206 @@
+#language {
+    top:15px;
+    left:10px;
+    position: absolute;
+}
+
+#language a {
+    height: 20px;
+    width: 30px;
+    margin-right:5px;
+    display: inline-block;
+    background-size:cover;
+}
+
+#language a:hover {
+    cursor: pointer;
+}
+
+#lang_de {
+    background-image: url(../img/logo_de.png);
+}
+
+#lang_en {
+    background-image: url(../img/logo_gb.png);
+}
+
+#container_mxGraph {
+    overflow-x:auto;
+    overflow-y:hidden;
+    background-color: #f5f9fd;
+    margin: 75px 5px 5px;
+    padding:10px;
+}
+
+#container_mxGraph:hover g rect, #container_mxGraph:hover g text, #container_mxGraph:hover g path {
+    cursor: pointer;
+}
+
+#container_articles {
+    margin: 5px 5px 20px;
+    -webkit-column-width: 300px;
+    -moz-column-width: 300px;
+    column-width: 300px;
+    -webkit-column-gap: 5px;
+    -moz-column-gap: 5px;
+    column-gap: 5px;
+    -webkit-column-count: 4;
+    -moz-column-count: 4;
+    column-count: 4;
+}
+
+#container_articles .publication {
+    display: inline-block;
+    font-size: .9em;
+    padding: 10px;
+    color: black;
+    margin-bottom: 5px;
+    border: 1px solid #338dcd;
+    background-color: #f5f9fd;
+    -webkit-column-break-inside: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    position: relative;
+}
+
+#container_articles .publication h3 {
+    font-size: 1em;
+    color: #338dcd;
+    margin: 0;
+    font-variant: small-caps;
+}
+
+#container_articles .publication p {
+    color: black;
+    font-size:0.8em;
+    margin: .5em 0;
+    text-align: justify;
+}
+
+#container_articles .publication .author {
+
+}
+
+#container_articles .publication .year {
+    font-weight:bold;
+}
+
+#container_articles .publication .abstract {
+    max-height: 115px;
+    overflow: hidden;
+    position: relative;
+}
+
+#container_articles .publication .abstract_short:after {
+    position: absolute;
+    bottom: 0;
+    left:0;
+    height: 100%;
+    width: 100%;
+    content: "";
+    background: linear-gradient(to top,
+    rgba(245,249,253, 1) 0%,
+    rgba(245,249,253, 0) 60%
+    );
+    pointer-events: none;
+}
+
+#container_articles .highlight {
+    border: 1px solid red;
+}
+
+#container_articles .highlight h3 {
+    color: red;
+}
+
+#container_articles .icons {
+    text-align: right;
+}
+
+#container_articles a {
+    height:20px;
+    width:20px;
+    margin-right:5px;
+    display: inline-block;
+    background-size:cover;
+}
+
+#container_articles a:hover {
+    cursor: pointer;
+}
+
+#container_articles .link {
+    background-image: url(../img/logo_link.png);
+}
+
+#container_articles .bibtex {
+    background-image: url(../img/logo_bib.png);
+}
+
+#container_articles .show_details {
+    background-image: url(../img/logo_details.png);
+}
+
+#container_articles .hide_details {
+    background-image: url(../img/logo_details_rev.png);
+}
+
+#container_articles .editclass {
+    background-image: url(../img/logo_editclass.png);
+}
+
+#overlay {
+    position: fixed;
+    display: none;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0,0,0,0.7);
+    z-index: 100;
+}
+
+#overlay form {
+    position: absolute;
+    color: white;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    -ms-transform: translate(-50%,-50%);
+}
+
+#overlay form .button {
+    background-color: #338dcd;
+    margin-top: 1em;
+    margin-right: .5em;
+    font-size:.9em;
+}
+
+#overlay form .checkbox_main {
+
+}
+
+#overlay form .checkbox_sub1 {
+    font-size: .9em;
+}
+
+#overlay form .checkbox_sub2 {
+    font-size: .9em;
+}
+
+#overlay form .checkbox_main input {
+     margin-left: 0;
+     margin-right: .3em;
+ }
+
+#overlay form .checkbox_sub1 input {
+    margin-left: 1em;
+    margin-right: .3em;
+}
+
+#overlay form .checkbox_sub2 input {
+    margin-left: 2em;
+    margin-right: .3em;
+}

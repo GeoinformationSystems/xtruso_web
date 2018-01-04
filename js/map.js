@@ -705,7 +705,7 @@ function f_updateTimeSelection(layerId, index, selectedValue) {
 function f_timeStep(layerId, value){
     //first value
     if(value === -2)
-        f_initTimeSelection(layerId, timeValues[layerId][0]);
+        f_initTimeSelection(layerId, timeValues[layerId]['timestamp']);
     //last value
     else if(value === 2)
         f_initTimeSelection(layerId, timeValues[layerId][timeValues[layerId].length - 1]);
@@ -768,7 +768,7 @@ function f_unselectTime(layerId, index) {
  * @param strokeWidth stroke width
  * @param fillColor fill color
  * @param radius image (circle) radius
- * @param dashed flag: dashed stroke
+ * @param lineDash flag: dashed stroke
  * @returns style oject
  */
 function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
@@ -779,13 +779,12 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
             lineDash: lineDash
         }),
         fill: new ol.style.Fill({
-            color: fillColor,
-            opacity: 0.1
+            color: fillColor
         }),
         image: new ol.style.Circle({
             radius: radius,
             fill: new ol.style.Fill({
-                color: fillColor
+                color: strokeColor
             }),
             stroke: new ol.style.Stroke({
                 color: strokeColor,
@@ -798,18 +797,18 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
 
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Main-catchments SN", false, .5, "Main-catchments &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Sub-catchments SN", false, .5, "Sub-catchments &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Haupteinzugsgebiete SN", false, .5, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Teileinzugsgebiete SN", false, .5, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
 
 f_initSensorHubLayer("HWIMS", "LHWZ Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
 f_initSensorHubLayer("BAFG", "BAFG Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
@@ -890,7 +889,7 @@ function f_getSelectInteraction() {
     return new ol.interaction.Select({
         condition: ol.events.condition.click,
         multi: true,
-        style: f_createStyle('#ffbf00', 2, '#ffbf00', 4, []),
+        style: f_createStyle('#ffbf00', 2, 'rgba(255,190,0,0.1)', 4, []),
         filter: function (feature, layer) {
             if (!layer || !(layer.id in vectorOverlays || layer.id in sensorOverlays))
                 return false;
@@ -941,7 +940,7 @@ function f_getHighlightInteraction() {
     var interactionHighlight = new ol.interaction.Select({
         condition: ol.events.condition.pointerMove,
         multi: true,
-        style: f_createStyle('#ff0000', 3, 'rgba(255,0,0,0.1)', 6, []),
+        style: f_createStyle('#ff0000', 3, 'rgba(255,0,0,0.1)', 4, []),
         layers: function (layer) {
             return layer && (layer.id in vectorOverlays || layer.id in sensorOverlays);
         },
@@ -1096,7 +1095,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
             featurePropertyDiv.append($('<br>'));
 
             //show graph with latest measurements and predictions
-            var graphId = sensorCode + "_graph";
+            var graphId = networkCode + "_" + deviceCode + "_" + sensorCode + "_graph";
             sensorHubMeasurementLinks[graphId] = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals['14 Days']);
             featurePropertyDiv.append($('<span>', {
                 'class': 'property_name property_link',
@@ -1149,17 +1148,22 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
  * @param graphId graph identifier
  * @param measurements measurements from sensor
  */
-function f_setMeasurements(graphId, measurements) {
+function f_setMeasurements(graphId, csv) {
 
     var samplingIntervals = [];
 
-    //set measurement values for D3
-    measurements.forEach(function(d, i) {
-        d[0] = d3.isoParse(d.begin);
-        d[1] = +d.v;
-        if(i > 0)
-            samplingIntervals.push(d[0] - measurements[i-1][0]);
+    //parse measurement values for D3
+    var measurements = d3.csvParse(csv, function(d) {
+        return {
+            'timestamp': d3.isoParse(d.begin),
+            'value': +d.v
+        };
     });
+
+    //add intervals
+    for (i = 1; i < measurements.length; i++) {
+        samplingIntervals.push(measurements[i]['timestamp'] - measurements[i - 1]['timestamp']);
+    }
 
     //set max sampling gap = twice the sampling interval (median of all sampling intervals)
     var maxGap = samplingIntervals[Math.floor(samplingIntervals.length / 2)] * 2;
@@ -1169,11 +1173,11 @@ function f_setMeasurements(graphId, measurements) {
     var updateIndex = 0;
     var measurementsWithMarkedGap = [];
     for (var i = 0; i < measurements.length; i++) {
-        if(measurements[i][0] - lastValidMeasurement[0] > maxGap) {
+        if(measurements[i]["timestamp"] - lastValidMeasurement["timestamp"] > maxGap) {
             //add null value, used to show gap in visualization
             measurementsWithMarkedGap[i + updateIndex++] = {
-                0: new Date(measurements[i][0] - maxGap),
-                1: null
+                "timestamp": new Date(measurements[i]['timestamp'] - maxGap),
+                "value": null
             };
         }
         measurementsWithMarkedGap[i + updateIndex] = measurements[i];

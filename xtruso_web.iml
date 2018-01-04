@@ -12,5 +12,6 @@
     <orderEntry type="library" name="ol" level="application" />
     <orderEntry type="library" name="d3.v4" level="application" />
     <orderEntry type="library" name="d3" level="application" />
+    <orderEntry type="library" name="masonry.pkgd" level="application" />
   </component>
 </module>
