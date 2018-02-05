@@ -1076,7 +1076,10 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                             url: anchor.downloadUrl,
                             type: 'GET',
                             dataType: 'binary',
-                            headers: {Accept: anchor.format, 'Content-Type': anchor.format},
+                            headers: {
+                                Accept: anchor.format,
+                                'Content-Type': anchor.format
+                            },
                             processData: false,
                             id: id,
                             success: function(result) {
@@ -1123,6 +1126,10 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                     else {
                         var url = sensorHubMeasurementLinks[evt.target.id];
                         $.ajax({
+                            headers: {
+                                Accept : "text/csv; charset=utf-8",
+                                "Content-Type": "text/csv; charset=utf-8"
+                            },
                             url: url,
                             type: 'GET',
                             id: evt.target.id,
@@ -1146,7 +1153,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
 /**
  * add SensorHub measurements to cache
  * @param graphId graph identifier
- * @param measurements measurements from sensor
+ * @param csv measurements from sensor
  */
 function f_setMeasurements(graphId, csv) {
 

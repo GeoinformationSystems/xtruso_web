@@ -10,6 +10,7 @@ $(function () {
         "            <li><a href=\"https://extruso.bu.tu-dresden.de/news\">Aktuelles</a></li>\n" +
         "            <li><a href=\"https://extruso.bu.tu-dresden.de/map\">Karte</a></li>\n" +
         "            <li><a href=\"https://extruso.bu.tu-dresden.de/projektinfo\">Projektinformationen</a></li>\n" +
+        "            <li><a href=\"https://extruso.bu.tu-dresden.de/publications\">Publikationen</a></li>\n" +
         "        </ul>\n" +
         "    </nav>\n" +
         "</header>");

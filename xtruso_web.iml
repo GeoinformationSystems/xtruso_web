@@ -13,5 +13,6 @@
     <orderEntry type="library" name="d3.v4" level="application" />
     <orderEntry type="library" name="d3" level="application" />
     <orderEntry type="library" name="masonry.pkgd" level="application" />
+    <orderEntry type="library" name="opencpu-0.4" level="application" />
   </component>
 </module>
