@@ -45,12 +45,36 @@ var sensorHubAPI = "https://api.opensensorweb.de/v0";
 var sensorHubDownloadAnchors = {};
 var sensorHubMeasurementLinks = {};
 var sensorHubMeasurements = {};
+//array with radolan timeseries
+var radolanTimeseries = {};
 //array with measurement intervals that can be requested for download
 var now = new Date();
+//geoJSON formta for parsing and encoding GeoJSON
+var geojson  = new ol.format.GeoJSON();
+
+//set OCPU target URL
+//ocpu.seturl("https://ocpu.geo.tu-dresden.de/ocpu/library/xtruso/R");
+ocpu.seturl("https://extruso.bu.tu-dresden.de/R");
+
+/**
+ * get time interval object
+ * @param start start time
+ * @param end end time
+ * @return {{start: Date, end: Date, get: string}}
+ */
+function f_getInterval(start, end) {
+    return {
+        start: start,
+        end: end,
+        get: "start=" + (start !== "" ? start.toISOString() : "") + "&end=" + end.toISOString()
+    }
+}
+
 var sensorHubDownloadIntervals = {
-    "14 Days": "start=" + new Date(new Date().setDate(now.getDate() - 14)).toISOString() + "&end=" + now.toISOString(),      //last 14 days
-    "1 Year": "start=" + new Date(new Date().setYear(now.getFullYear() - 1)).toISOString() + "&end=" + now.toISOString(),    //last year
-    "All": ""                                                                                                                //all measurements
+    "14d": f_getInterval(new Date(new Date().setDate(now.getDate() - 14)), now),
+    //"28d": f_getInterval(new Date(new Date().setDate(now.getDate() - 28)), now),
+    "1y": f_getInterval(new Date(new Date().setYear(now.getFullYear() - 1)), now),
+    "All": {start: null, end: now, get: ""}
 };
 
 /**
@@ -75,6 +99,7 @@ proxies["https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/ei
 function f_escapeSelector(selector){
     return selector.replace(/[^a-zA-Z\d]/g, "" );
 }
+
 
 /**
  * initialize a WMS layer
@@ -148,7 +173,7 @@ function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution
             url: function (extent) {
                 return url + '&bbox=' + extent.join(',') + ',EPSG:3857';
             },
-            format: new ol.format.GeoJSON(),
+            format: geojson,
             strategy: ol.loadingstrategy.bbox,
             attributions: attribution
         }),
@@ -156,6 +181,23 @@ function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution
     });
     vectorLayer.id = f_escapeSelector(baseUrl + ":" + layer);
     vectorLayer.name = layer;
+    vectorOverlays[vectorLayer.id] = vectorLayer;
+}
+
+function f_initFeatureLayer(id, title, visible, opacity, zIndex, style) {
+    //init vector layer
+    var vectorLayer = new ol.layer.Vector({
+        title: title,
+        visible: visible,
+        opacity: opacity,
+        zIndex: zIndex,
+        source: new ol.source.Vector({
+            format: geojson
+        }),
+        style: style
+    });
+    vectorLayer.id = id;
+    vectorLayer.name = title;
     vectorOverlays[vectorLayer.id] = vectorLayer;
 }
 
@@ -229,8 +271,7 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
                         }
                     });
                 });
-                var format = new ol.format.GeoJSON();
-                sensorOverlays[network].getSource().addFeatures(format.readFeatures(featureCollection, {
+                sensorOverlays[network].getSource().addFeatures(geojson.readFeatures(featureCollection, {
                     featureProjection: projection
                 }));
             }
@@ -238,7 +279,7 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
     };
     //init sensor source
     var sensorSource = new ol.source.Vector({
-        format: new ol.format.GeoJSON(),
+        format: geojson,
         attribution: attribution,
         loader: sensorLoader,
         zIndex: 100,
@@ -313,7 +354,7 @@ function f_initCapabilities(capabilitiesDoc, layerId, layer, wmsLayer, timeEnabl
 		}
     }
     //only add legend, if URL is valid
-    urlExists(legendUrl, function(exists){
+    f_urlExists(legendUrl, function(exists){
         if(exists)
             f_setLegend(layerId, layer, legendUrl);
     });
@@ -336,7 +377,7 @@ function f_initCapabilities(capabilitiesDoc, layerId, layer, wmsLayer, timeEnabl
  * @param url input url
  * @param callback
  */
-function urlExists(url, callback){
+function f_urlExists(url, callback){
     $.ajax({
         type: 'HEAD',
         url: url,
@@ -797,21 +838,26 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
 
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:main-catchments", "Haupteinzugsgebiete SN", false, .5, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:sub-catchments", "Teileinzugsgebiete SN", false, .5, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", "Haupteinzugsgebiete SN", false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", "Teileinzugsgebiete SN", false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
+
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", "Flussläufe SN", false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createStyle('#0059CF', 1));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", "Gewässernetzwerk SN", false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createStyle('#0059CF', 1));
 
 f_initSensorHubLayer("HWIMS", "LHWZ Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
 f_initSensorHubLayer("BAFG", "BAFG Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
+
+f_initFeatureLayer("ProcessingResults", "Processing results", true, .5, 40, f_createStyle('#C02A20', 1, '#880000', 0));
 
 /**
  * create layerswitcher object (is referenced from ol3-layerswitcher for rendering onchange)
@@ -1008,10 +1054,6 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
     var infoDiv = $('<div>');
     features.forEach(function(f) {
 
-        var networkCode = f.get('networkCode');
-        var deviceCode = f.get('deviceCode');
-        var sensorCode = f.get('sensorCode');
-
         //create element with feature id as text
         var featureInfoDiv = $('<div>', {
             'class': 'info_item'
@@ -1035,12 +1077,17 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
             }));
             featurePropertyDiv.append($('<br>'));
         }
-        //create SensorHub information
+
+        //init SensorHub information
         if(properties.length !== 0 && f.get("sensorCode") !== undefined){
+
+            var networkCode = f.get('networkCode');
+            var deviceCode = f.get('deviceCode');
+            var sensorCode = f.get('sensorCode');
 
             //add API link for sensor information
             featurePropertyDiv.append($('<a>', {
-                'class': 'property_name property_link',
+                'class': 'property_name property_link property_info',
                 'href': f_getSensorHubLink(networkCode, deviceCode, sensorCode, false, null),
                 text: 'Sensor Information',
                 click: function(){
@@ -1049,39 +1096,45 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                 }
             })).append($('<br>'));
 
-            //create download links for definded measurement intervals
-            featurePropertyDiv.append($('<span>', {
-                'class': 'property_name',
-                text: "Download Measurements: "
-            }));
+            //init divs for download and graph display
+            var downloadDiv = $('<span>', {'class': 'property_links'});
+            var graphDiv = $('<span>', {'class': 'property_links'});
+
+            //create download and graph links for each interval
             for(var interval in sensorHubDownloadIntervals) {
-                var id = sensorCode + "_" + interval;
-                var downloadId = "download_" + id;
-                var downloadUrl = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals[interval]);
+
+                //create link id
+                var downloadId = networkCode + "_" + deviceCode + "_" + sensorCode + "_" +  interval;
+
+                //get SensorHub Link
+                sensorHubMeasurementLinks[downloadId] = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals[interval]);
+
+                //init data download link
                 var downloadLink = $('<a>', {
-                    id: downloadId
+                    id: "download_" + downloadId
                 });
-                downloadLink.downloadUrl = downloadUrl;
+                downloadLink.downloadUrl = sensorHubMeasurementLinks[downloadId];
                 downloadLink.format = "text/csv";
-                downloadLink.filename = "measurements_" + id + ".csv";
-                sensorHubDownloadAnchors[id] = downloadLink;
-                featurePropertyDiv.append($('<span>', {
+                downloadLink.filename = "measurements_" + downloadId + ".csv";
+                sensorHubDownloadAnchors[downloadId] = downloadLink;
+
+                //create download link
+                downloadDiv.append($('<span>', {
                     'class': 'property_link property_link_selection',
-                    id: id,
                     text: interval,
+                    id: downloadId,
                     click: function(evt){
-                        var id = evt.target.id;
-                        var anchor = sensorHubDownloadAnchors[id];
+                        var downloadAnchor = sensorHubDownloadAnchors[evt.target.id];
                         $.ajax({
-                            url: anchor.downloadUrl,
+                            url: downloadAnchor.downloadUrl,
                             type: 'GET',
                             dataType: 'binary',
                             headers: {
-                                Accept: anchor.format,
-                                'Content-Type': anchor.format
+                                Accept: downloadAnchor.format,
+                                'Content-Type': downloadAnchor.format
                             },
                             processData: false,
-                            id: id,
+                            id: evt.target.id,
                             success: function(result) {
                                 var anchor = sensorHubDownloadAnchors[this.id];
                                 var windowUrl = window.URL || window.webkitURL;
@@ -1094,57 +1147,163 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                         });
                     }
                 }).append(downloadLink));
-            }
-            featurePropertyDiv.append($('<br>'));
 
-            //show graph with latest measurements and predictions
-            var graphId = networkCode + "_" + deviceCode + "_" + sensorCode + "_graph";
-            sensorHubMeasurementLinks[graphId] = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals['14 Days']);
+                //create graph initialization link
+                graphDiv.append($('<span>', {
+                    'class': 'property_link property_link_selection',
+                    text: interval,
+                    id: downloadId,
+                    //set graph
+                    click: function(evt){
+                        //reset graph container
+                        jq_graphDiv.empty();
+                        //close graph, if shown already
+                        if(d3Graph.activeGraph(evt.target.id)){
+                            f_removeGraph(evt.target.id);
+                            //hide graph container, if no graph is displayed
+                            if(d3Graph.numberOfGraphs() === 0)
+                                jq_graphDiv.fadeOut(100);
+                            return;
+                        }
+                        //show graph for selected sensor
+                        jq_graphDiv.fadeIn(100);
+                        //check, if measurements are available in cache
+                        if(sensorHubMeasurements[evt.target.id] !== undefined && sensorHubMeasurements[evt.target.id].length > 0){
+                            f_addGraph(evt.target.id, sensorHubMeasurements[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent]);
+                        }
+                        //request measurements
+                        else {
+                            var url = sensorHubMeasurementLinks[evt.target.id];
+                            $.ajax({
+                                headers: {
+                                    Accept : "text/csv; charset=utf-8",
+                                    "Content-Type": "text/csv; charset=utf-8"
+                                },
+                                url: url,
+                                type: 'GET',
+                                id: evt.target.id,
+                                interval: evt.target.textContent,
+                                success: function (result) {
+                                    f_setMeasurements(this.id, result);
+                                    f_addGraph(this.id, sensorHubMeasurements[this.id], sensorHubDownloadIntervals[this.interval]);
+                                }
+                            });
+                        }
+                    }
+                }));
+            }
+
+            //create download links for definded measurement intervals
             featurePropertyDiv.append($('<span>', {
-                'class': 'property_name property_link',
-                text: 'Show Graph',
-                id: graphId,
-                //set graph
-                click: function(evt){
-                    //reset graph container
-                    jq_graphDiv.empty();
-                    //close graph, if shown already
-                    if(d3Graph.activeGraph(evt.target.id)){
-                        f_removeGraph(evt.target.id);
-                        //hide graph container, if no graph is displayed
-                        if(d3Graph.numberOfGraphs() === 0)
-                            jq_graphDiv.hide();
-                        return;
-                    }
-                    //show graph for selected sensor
-                    jq_graphDiv.fadeIn(100);
-                    //check, if measurements are available in cache
-                    if(sensorHubMeasurements[evt.target.id] !== undefined && sensorHubMeasurements[evt.target.id].length > 0){
-                        f_addGraph(evt.target.id);
-                    }
-                    //request measurements
-                    else {
-                        var url = sensorHubMeasurementLinks[evt.target.id];
-                        $.ajax({
-                            headers: {
-                                Accept : "text/csv; charset=utf-8",
-                                "Content-Type": "text/csv; charset=utf-8"
-                            },
-                            url: url,
-                            type: 'GET',
-                            id: evt.target.id,
-                            success: function (result) {
-                                f_setMeasurements(this.id, result);
-                                f_addGraph(this.id);
-                            }
+                'class': 'property_name property_download',
+                text: "Download: "
+            })).append(downloadDiv).append($('<br>'));
+
+            //create graph links
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_name property_graph',
+                text: "Graph: "
+            })).append(graphDiv).append($('<br>'));
+
+            //init upstream area selection for HWIMS stations
+            if(f.get("topic") === "Water") {
+
+                //add link to highlight upstream catchment
+                featurePropertyDiv.append($('<span>', {
+                    'class': 'property_name property_link property_process',
+                    text: 'Get upstream catchment',
+                    id: sensorCode,
+                    //set graph
+                    click: function (evt) {
+
+                        var req = ocpu.call("x.app.catchment.upstream", {'station.id': $(this).data('deviceCode'), 'geometry': true, 'dissolve': true, 'as.json': true}, function(session) {
+
+                            session.getObject(function(result){
+                                f_clearHighlight();
+                                var features = geojson.readFeatures(decodeURI(result));
+                                if(features !== null && features.length === 1) {
+                                    features[0].setId(features[0].get('id'));
+                                    features[0].layer = "upstream catchment";
+                                    vectorOverlays["ProcessingResults"].getSource().addFeature(features[0]);
+                                }
+                            });
+
+                        }).fail(function(){
+                            console.log("Error: " + req.responseText);
                         });
                     }
-                }
-            })).append($('<br>'));
+                }).data('deviceCode', deviceCode)).append($('<br>'))
+
+            }
+        }
+
+        //init RADOLAN timeseries links for polygon data
+        if(f.getGeometry().getType() === "MultiPolygon" || f.getGeometry().getType() === "Polygon") {
+
+            //init RADOLAN timeseries links
+            var radolanRWDiv = $('<span>', {'class': 'property_links'});
+            for(interval in sensorHubDownloadIntervals) {
+                //create link id
+                var radolanId = f.getId() + "_radolanRW_" +  interval;
+
+                //create graph initialization link
+                radolanRWDiv.append($('<span>', {
+                    'class': 'property_link property_link_selection',
+                    text: interval,
+                    id: radolanId,
+                    //set graph
+                    click: function(evt){
+                        //reset graph container
+                        jq_graphDiv.empty();
+                        //close graph, if shown already
+                        if(d3Graph.activeGraph(evt.target.id)){
+                            f_removeGraph(evt.target.id);
+                            //hide graph container, if no graph is displayed
+                            if(d3Graph.numberOfGraphs() === 0)
+                                jq_graphDiv.fadeOut(100);
+                            return;
+                        }
+                        //show graph div
+                        jq_graphDiv.fadeIn(100);
+                        //check, if measurements are available in cache
+                        if(radolanTimeseries[evt.target.id] !== undefined && radolanTimeseries[evt.target.id].length > 0){
+                            f_addGraph(evt.target.id, radolanTimeseries[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent]);
+                        }
+                        //request timeseries
+                        else {
+                            //set timeframe
+                            var timeframe = sensorHubDownloadIntervals[evt.target.textContent];
+                            if(timeframe['start'] === null)
+                                timeframe['start'] = new Date("2005-01-01 00:00:00Z");
+
+                            var mask = geojson.writeFeature($(this).data('feature'));
+
+                            //request OCPU
+                            var req = ocpu.call("x.app.radolan.timeseries", {'t.start': f_getRADOLANTimestamp(timeframe['start']), 't.end': f_getRADOLANTimestamp(timeframe['end']), 'extent': mask}, function(session) {
+                                session.getObject(function(result){
+                                    f_setRADOLANMeasurements(evt.target.id, result);
+                                    f_addGraph(evt.target.id, radolanTimeseries[evt.target.id], timeframe);
+                                });
+
+                            }).fail(function(){
+                                console.log("Error: " + req.responseText);
+                            });
+                        }
+                    }
+                }).data('feature', f));
+            }
+
+            //create graph links
+            featurePropertyDiv.append($('<span>', {
+                'class': 'property_name property_process',
+                text: "RADOLAN RW graph: "
+            })).append(radolanRWDiv).append($('<br>'));
+
         }
 
         featureInfoDiv.append(featurePropertyDiv);
         infoDiv.append(featureInfoDiv);
+
     });
 
     return infoDiv;
@@ -1152,46 +1311,54 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
 
 /**
  * add SensorHub measurements to cache
- * @param graphId graph identifier
+ * @param id graph identifier
  * @param csv measurements from sensor
  */
-function f_setMeasurements(graphId, csv) {
-
-    var samplingIntervals = [];
+function f_setMeasurements(id, csv) {
 
     //parse measurement values for D3
-    var measurements = d3.csvParse(csv, function(d) {
+    sensorHubMeasurements[id] = d3.csvParse(csv, function(d) {
         return {
             'timestamp': d3.isoParse(d.begin),
             'value': +d.v
         };
     });
 
-    //add intervals
-    for (i = 1; i < measurements.length; i++) {
-        samplingIntervals.push(measurements[i]['timestamp'] - measurements[i - 1]['timestamp']);
-    }
+}
 
-    //set max sampling gap = twice the sampling interval (median of all sampling intervals)
-    var maxGap = samplingIntervals[Math.floor(samplingIntervals.length / 2)] * 2;
+/**
+ * add RADOLAN measurements to cache
+ * @param id measurements identifier
+ * @param ocpu measurements from OCPU
+ */
+function f_setRADOLANMeasurements(id, ocpu) {
 
-    //check for gaps
-    var lastValidMeasurement = measurements[0];
-    var updateIndex = 0;
-    var measurementsWithMarkedGap = [];
-    for (var i = 0; i < measurements.length; i++) {
-        if(measurements[i]["timestamp"] - lastValidMeasurement["timestamp"] > maxGap) {
-            //add null value, used to show gap in visualization
-            measurementsWithMarkedGap[i + updateIndex++] = {
-                "timestamp": new Date(measurements[i]['timestamp'] - maxGap),
-                "value": null
-            };
-        }
-        measurementsWithMarkedGap[i + updateIndex] = measurements[i];
-        lastValidMeasurement = measurements[i];
+    //parse measurement values
+    var measurements = [];
+    for(var i=0; i<ocpu.length; i++){
+        measurements.push({
+            'timestamp': f_parseRADOLANTimestamp(ocpu[i]['timestamp']),
+            'value': ocpu[i]['sum']
+        })
     }
-    //add measurements to cache
-    sensorHubMeasurements[graphId] = measurementsWithMarkedGap;
+    radolanTimeseries[id] = measurements;
+
+}
+
+/**
+ * parse timestamp from R
+ * @param timestamp seconds since 01.01.1970
+ */
+function f_parseRADOLANTimestamp(timestamp){
+    return new Date(timestamp * 1000);
+}
+
+/**
+ * format RADOLAN timestamp
+ * @param timestamp input Date
+ */
+function f_getRADOLANTimestamp(timestamp) {
+    return timestamp.toISOString().replace("T"," ").replace("Z","");
 }
 
 /**
@@ -1208,22 +1375,22 @@ function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements, i
     if(!measurements)
         return url;
     //add measurement request
-    return url + "/measurements/raw?" + interval;
+    return url + "/measurements/raw?" + interval['get'];
 }
 
 /**
  * initialize measurement graph
- * @param graphId graph id
+ * @param id measurement id
+ * @param measurements input measurements
+ * @param timeframe graph timeframe
  */
-function f_addGraph(graphId) {
+function f_addGraph(id, measurements, timeframe) {
 
     //get measurements
-    var measurements = sensorHubMeasurements[graphId];
     if(measurements === undefined || measurements.length === 0)
         return;
 
-    d3Graph.addGraph(graphId, graphId, measurements);
-
+    d3Graph.addGraph(id, id, measurements, timeframe, null);
 }
 
 /**
@@ -1242,6 +1409,7 @@ function f_removeGraph(graphId) {
  * @returns div element
  */
 function f_getHTMLFeatureId(feature, showLayer, highlight){
+
     var featureId = feature.getId();
     var idDiv = $('<div>', {
         'class': 'property_id'
@@ -1381,8 +1549,10 @@ $(function () {
         });
     $(document)
         .mousemove( function(e) {
-            if(jq_highlightDiv.is(":visible"))
-                jq_highlightDiv.css({ 'bottom':$(window).height() - e.pageY + 5, 'left':e.pageX + 5 });
+            if(jq_highlightDiv.is(":visible")) {
+                var maxRight = $(window).width() - jq_highlightDiv.width() - 15;
+                jq_highlightDiv.css({'bottom': $(window).height() - e.pageY + 5, 'left': (e.pageX < maxRight ? e.pageX + 5 : maxRight)});
+            }
         });
 
 });
