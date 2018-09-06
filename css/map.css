@@ -118,6 +118,10 @@ a {
     clip-path: url(#clip);
 }
 
+.bar {
+    clip-path: url(#clip);
+}
+
 .dot {
     stroke: none;
     clip-path: url(#clip);
@@ -135,6 +139,10 @@ a {
     stroke: white;
     stroke-width: 2;
     paint-order: stroke;
+}
+
+.axis_label {
+    display: none;
 }
 
 #graph_overlay {

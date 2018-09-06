@@ -75,4 +75,3 @@ $(document)
     .ajaxStop(function () {
         $('#loading_overlay').hide();
     });
-

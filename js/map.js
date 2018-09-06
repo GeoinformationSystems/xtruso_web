@@ -38,15 +38,26 @@ var d3Graph = new D3Graph("container_graph");
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
 var zoom = 10;
-//sensor hub endpoint
-var sensorHubURL = "https://search.opensensorweb.de/v1/sensor/search";
-var sensorHubAPI = "https://api.opensensorweb.de/v0";
 //array with link identifiers for data download
 var sensorHubDownloadAnchors = {};
 var sensorHubMeasurementLinks = {};
 var sensorHubMeasurements = {};
 //array with radolan timeseries
 var radolanTimeseries = {};
+//array with station forecasts
+var stationForecasts = {};
+var supportedDevices = ["550490","567221","550560","552210","583190","568350","568400","568160","554260","554210",
+    "554220","552012","550110","550390","550302","550190","583090","583122","564290","560301","564201","560201",
+    "567700","551510","551411","551420","583235","583251","567310","551801","551811","551820","576391","576401",
+    "576410","550810","563290","562012","563460","562014","563880","563890","563950","563790","562031","562040",
+    "564160","562070","530020"];
+var styleForecast = f_createStyle('#0070C0', 1, '#003C88', 4, false, true);
+var styleNoForecast = f_createStyle('#0070C0', 1, '#003C88', 4, false, false);
+var f_forecastStyle = function(feature, res){
+    if(feature.get('parameter') === "discharge" && supportedDevices.indexOf(feature.get('device')) > -1)
+        return styleForecast;
+    else return styleNoForecast;
+};
 //array with measurement intervals that can be requested for download
 var now = new Date();
 //geoJSON formta for parsing and encoding GeoJSON
@@ -75,6 +86,17 @@ var sensorHubDownloadIntervals = {
     //"28d": f_getInterval(new Date(new Date().setDate(now.getDate() - 28)), now),
     "1y": f_getInterval(new Date(new Date().setYear(now.getFullYear() - 1)), now),
     "All": {start: null, end: now, get: ""}
+};
+
+var forecastIntervals = {
+    "6h": f_getInterval(now, new Date(new Date().setDate(now.getDate() + 1)))
+};
+
+//measured OSW properties
+var oswProperties = {
+    "height": "water level",
+    "flow": "discharge",
+    "precipitation": "precipitation"
 };
 
 /**
@@ -224,17 +246,20 @@ function f_getSensorHubQuery(network, extent){
                 ]
             }
         },
-        "_source" : ["geometry", "networkCode", "topic", "deviceCode", "sensorCode"]
+        "_source" : ["geometry", "networkCode", "topic", "deviceCode", "sensorCode", "measuredProperty", "uom"]
     };
 }
 
-function f_initSensorHubLayer(network, title, visible, attribution, zIndex, style){
+function f_initSensorHubLayer(url, network, title, visible, attribution, zIndex, style){
+
+    var searchAPI = url.replace("api", "search") + "/sensor/_search"
+
     //init layer with empty source
     var sensorLayer = new ol.layer.Vector({
         title: title,
         visible: visible,
         source: new ol.source.Vector(),
-        style: style,
+        style: f_forecastStyle,
         zIndex: zIndex
     });
     sensorLayer.id = f_escapeSelector(network);
@@ -243,9 +268,10 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
     //init ol loader for sensor hub data
     var sensorLoader = function(extent, resolution, projection) {
         $.ajax({
-            url: sensorHubURL,
+            url: searchAPI,
             type: "POST",
             dataType: "json",
+            contentType: 'application/json',
             data: JSON.stringify(f_getSensorHubQuery(network, extent)),
             success: function(response){
                 var featureCollection = {
@@ -257,17 +283,18 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
                     var featureSource = featureObject["_source"];
                     featureCollection.features.push({
                         type: 'Feature',
-                        id: featureSource["networkCode"] + featureSource["deviceCode"] + featureSource["sensorCode"],
+                        id: featureSource["sensorCode"],
                         geometry: {
                             type: 'Point',
                             coordinates: [ featureSource["geometry"].lon, featureSource["geometry"].lat ]
                         },
                         properties: {
-                            name: featureSource["sensorCode"],
-                            sensorCode: featureSource["sensorCode"],
-                            deviceCode: featureSource["deviceCode"],
-                            networkCode: featureSource["networkCode"],
-                            topic: featureSource["topic"]
+                            sensorHubAPI: url,
+                            sensor: featureSource["sensorCode"],
+                            device: featureSource["deviceCode"],
+                            network: featureSource["networkCode"],
+                            parameter: oswProperties[featureSource["measuredProperty"]],
+                            uom: featureSource["uom"]
                         }
                     });
                 });
@@ -277,6 +304,115 @@ function f_initSensorHubLayer(network, title, visible, attribution, zIndex, styl
             }
         })
     };
+    //init sensor source
+    var sensorSource = new ol.source.Vector({
+        format: geojson,
+        attribution: attribution,
+        loader: sensorLoader,
+        zIndex: 100,
+        strategy: ol.loadingstrategy.bbox
+    });
+    //set sensor layer source
+    sensorLayer.setSource(sensorSource);
+}
+
+
+function f_initSensorHubDevices(url, network, title, visible, attribution, zIndex, style){
+
+    //init layer with empty source
+    var sensorLayer = new ol.layer.Vector({
+        title: title,
+        visible: visible,
+        source: new ol.source.Vector(),
+        style: style,
+        zIndex: zIndex
+    });
+    sensorLayer.id = f_escapeSelector(network);
+    sensorLayer.name = network;
+    sensorOverlays[network] = sensorLayer;
+
+    //init ol loader for sensor hub data
+    var sensorLoader = function(extent, resolution, projection) {
+
+        //create feature collection
+        var featureCollection = {
+            type: 'FeatureCollection',
+            features: []
+        };
+
+        //define function to get information on sensors
+        var getSensorInfo = function(sensorUrl, deviceInfo) {
+            var deferred = $.Deferred();
+            var deviceCode = deviceInfo["code"];
+            var deviceName = deviceInfo["name"];
+            var deviceDescription = deviceInfo["description"];
+            var deviceGeometry = deviceInfo["geometry"]["coordinates"];
+
+            $.get(sensorUrl, function(sensorInfo) {
+                $.each(sensorInfo.items, function (j, sensor) {
+
+                    //manually set parameter for VEREINT measurements
+                    //TODO align with OSW implementation
+                    var parameter;
+                    if(sensor["name"] === 'temp') parameter = "temperature";
+                    else if(sensor["name"] === 'hum') parameter = "humidity";
+                    else if(sensor["name"] === 'prec') parameter = "precipitation";
+                    else(parameter = "undefined");
+
+                    //add feature to collection
+                    featureCollection.features.push({
+                        type: 'Feature',
+                        id: deviceCode + "_" + sensor["name"],
+                        geometry: {
+                            type: 'Point',
+                            coordinates: deviceGeometry
+                        },
+                        properties: {
+                            sensorHubAPI: url,
+                            sensor: sensor["name"],
+                            device: deviceCode,
+                            name: deviceName + "_" + sensor["name"],
+                            parameter: parameter,
+                            description: deviceDescription,
+                            network: network
+                        }
+                    });
+                });
+                deferred.resolve();
+            });
+            return deferred.promise();
+        };
+
+        //define function to get information on devices and corresponding sensors
+        var getDeviceInfo = function(deviceUrl) {
+            var deferred = $.Deferred();
+            $.get(deviceUrl, function(deviceInfo) {
+                $.when(getSensorInfo(deviceInfo["sensors_url"], deviceInfo))
+                    .then(function() {
+                        deferred.resolve()
+                    });
+            });
+            return deferred.promise();
+        };
+
+        //get information on provided devices and sensors
+        $.get(url + "/networks/" + network + "/devices", function(deviceSummary){
+
+            //add device calls to array
+            var deviceCalls = [];
+            $.each(deviceSummary.items, function (i, device) {
+                deviceCalls.push(getDeviceInfo(device["href"]));
+            });
+
+            //add features after array of device calls is resolved
+            $.when.apply($, deviceCalls).then(function() {
+                sensorOverlays[network].getSource().addFeatures(geojson.readFeatures(featureCollection, {
+                    featureProjection: projection
+                }));
+            });
+        })
+    };
+
     //init sensor source
     var sensorSource = new ol.source.Vector({
         format: geojson,
@@ -810,10 +946,11 @@ function f_unselectTime(layerId, index) {
  * @param fillColor fill color
  * @param radius image (circle) radius
  * @param lineDash flag: dashed stroke
- * @returns style oject
+ * @param forecasted extra symbol for forecasted timeseries
+ * @returns * oject
  */
-function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
-    return new ol.style.Style({
+function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash, forecasted){
+    var style = new ol.style.Style({
         stroke: new ol.style.Stroke({
             color: strokeColor,
             width: strokeWidth,
@@ -834,30 +971,48 @@ function f_createStyle(strokeColor, strokeWidth, fillColor, radius, lineDash){
             })
         })
     });
+
+    if(forecasted){
+        style.setText(new ol.style.Text({
+            offsetX: 7,
+            offsetY: -7,
+            text: 'f',
+            stroke: new ol.style.Stroke({
+                color: "#FF0000",
+                width: 1
+            })
+        }))
+    }
+
+    return style;
 }
 
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", "Orthophoto SN", false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", "Elevation model SN", false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", "Radar Precipitation - 24h Avg", false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", "Radar Reflectivity - 5min", false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", "Radar Reflectivity - 2h Prediction", false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", "Haupteinzugsgebiete SN", false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0));
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", "Teileinzugsgebiete SN", false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", "Haupteinzugsgebiete SN", false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createStyle('#003C88', 1, '#0070C0', 0, false, false));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", "Teileinzugsgebiete SN", false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createStyle('#003C88', 1, '#0070C0', 0, false, false));
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", "Flussläufe SN", false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createStyle('#0059CF', 1));
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", "Gewässernetzwerk SN", false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createStyle('#0059CF', 1));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", "Flussläufe SN", false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createStyle('#0059CF', 1, '#0059CF', 0, false, false));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", "Gewässernetzwerk SN", false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createStyle('#0059CF', 1, '#0059CF', 0, false, false));
 
-f_initSensorHubLayer("HWIMS", "LHWZ Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
-f_initSensorHubLayer("BAFG", "BAFG Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4));
+f_initSensorHubDevices("https://api.sensorhub-tud-test.smart-rain.de/v0", "vereint", "VEREINT Crowdsourcing", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#7e36c0', 1, '#470088', 4, false, false));
+f_initSensorHubDevices("https://api.sensorhub-tud-test.smart-rain.de/v0", "student", "Studentenseminar", false, "Sensors &copy; SensorHub. ", 20, f_createStyle('#7e36c0', 1, '#470088', 4, false, false));
 
-f_initFeatureLayer("ProcessingResults", "Processing results", true, .5, 40, f_createStyle('#C02A20', 1, '#880000', 0));
+
+f_initSensorHubLayer("https://api.opensensorweb.de/v0", "HWIMS", "LHWZ Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4, false, false));
+f_initSensorHubLayer("https://api.opensensorweb.de/v0", "BAFG", "BAFG Pegeldaten", true, "Sensors &copy; SensorHub. ", 20, f_createStyle('#0070C0', 1, '#003C88', 4, false, false));
+
+f_initFeatureLayer("ProcessingResults", "Processing results", true, .5, 40, f_createStyle('#C02A20', 1, '#880000', 0, false, false));
 
 /**
  * create layerswitcher object (is referenced from ol3-layerswitcher for rendering onchange)
@@ -935,7 +1090,7 @@ function f_getSelectInteraction() {
     return new ol.interaction.Select({
         condition: ol.events.condition.click,
         multi: true,
-        style: f_createStyle('#ffbf00', 2, 'rgba(255,190,0,0.1)', 4, []),
+        style: f_createStyle('#ffbf00', 2, 'rgba(255,190,0,0.1)', 4, [], false),
         filter: function (feature, layer) {
             if (!layer || !(layer.id in vectorOverlays || layer.id in sensorOverlays))
                 return false;
@@ -986,7 +1141,7 @@ function f_getHighlightInteraction() {
     var interactionHighlight = new ol.interaction.Select({
         condition: ol.events.condition.pointerMove,
         multi: true,
-        style: f_createStyle('#ff0000', 3, 'rgba(255,0,0,0.1)', 4, []),
+        style: f_createStyle('#ff0000', 3, 'rgba(255,0,0,0.1)', 4, [], false),
         layers: function (layer) {
             return layer && (layer.id in vectorOverlays || layer.id in sensorOverlays);
         },
@@ -1065,7 +1220,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
         });
         var f_properties = (properties === "*" ? f.getProperties() : properties);
         for (var property in f_properties) {
-            if (!property || property === 'geometry')
+            if (!property || property === 'geometry' || property === 'sensorHubAPI')
                 continue;
             featurePropertyDiv.append($('<span>', {
                 'class': 'property_name',
@@ -1079,16 +1234,18 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
         }
 
         //init SensorHub information
-        if(properties.length !== 0 && f.get("sensorCode") !== undefined){
+        if(properties.length !== 0 && f.get("sensor") !== undefined){
 
-            var networkCode = f.get('networkCode');
-            var deviceCode = f.get('deviceCode');
-            var sensorCode = f.get('sensorCode');
+            var sensorHubAPI = f.get('sensorHubAPI')
+            var networkCode = f.get('network');
+            var deviceCode = f.get('device');
+            var sensorCode = f.get('sensor');
+            f.parameter = f.get('parameter');
 
             //add API link for sensor information
             featurePropertyDiv.append($('<a>', {
                 'class': 'property_name property_link property_info',
-                'href': f_getSensorHubLink(networkCode, deviceCode, sensorCode, false, null),
+                'href': f_getSensorHubLink(sensorHubAPI, networkCode, deviceCode, sensorCode, false, null),
                 text: 'Sensor Information',
                 click: function(){
                     window.open(this.href);
@@ -1103,26 +1260,26 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
             //create download and graph links for each interval
             for(var interval in sensorHubDownloadIntervals) {
 
-                //create link id
-                var downloadId = networkCode + "_" + deviceCode + "_" + sensorCode + "_" +  interval;
+                //create graph measurement id
+                var graphId = deviceCode + "_" + sensorCode + "_" +  interval;
 
                 //get SensorHub Link
-                sensorHubMeasurementLinks[downloadId] = f_getSensorHubLink(networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals[interval]);
+                sensorHubMeasurementLinks[graphId] = f_getSensorHubLink(sensorHubAPI, networkCode, deviceCode, sensorCode, true, sensorHubDownloadIntervals[interval]);
 
                 //init data download link
                 var downloadLink = $('<a>', {
-                    id: "download_" + downloadId
+                    id: "a_" + graphId
                 });
-                downloadLink.downloadUrl = sensorHubMeasurementLinks[downloadId];
+                downloadLink.downloadUrl = sensorHubMeasurementLinks[graphId];
                 downloadLink.format = "text/csv";
-                downloadLink.filename = "measurements_" + downloadId + ".csv";
-                sensorHubDownloadAnchors[downloadId] = downloadLink;
+                downloadLink.filename = "measurements_" + graphId + ".csv";
+                sensorHubDownloadAnchors[graphId] = downloadLink;
 
                 //create download link
                 downloadDiv.append($('<span>', {
                     'class': 'property_link property_link_selection',
                     text: interval,
-                    id: downloadId,
+                    id: graphId,
                     click: function(evt){
                         var downloadAnchor = sensorHubDownloadAnchors[evt.target.id];
                         $.ajax({
@@ -1152,7 +1309,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                 graphDiv.append($('<span>', {
                     'class': 'property_link property_link_selection',
                     text: interval,
-                    id: downloadId,
+                    id: graphId,
                     //set graph
                     click: function(evt){
                         //reset graph container
@@ -1169,7 +1326,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                         jq_graphDiv.fadeIn(100);
                         //check, if measurements are available in cache
                         if(sensorHubMeasurements[evt.target.id] !== undefined && sensorHubMeasurements[evt.target.id].length > 0){
-                            f_addGraph(evt.target.id, sensorHubMeasurements[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent]);
+                            f_addGraph(evt.target.id, sensorCode, sensorHubMeasurements[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent], f.parameter);
                         }
                         //request measurements
                         else {
@@ -1185,7 +1342,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                                 interval: evt.target.textContent,
                                 success: function (result) {
                                     f_setMeasurements(this.id, result);
-                                    f_addGraph(this.id, sensorHubMeasurements[this.id], sensorHubDownloadIntervals[this.interval]);
+                                    f_addGraph(this.id, sensorCode, sensorHubMeasurements[this.id], sensorHubDownloadIntervals[this.interval], f.parameter);
                                 }
                             });
                         }
@@ -1206,7 +1363,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
             })).append(graphDiv).append($('<br>'));
 
             //init upstream area selection for HWIMS stations
-            if(f.get("topic") === "Water") {
+            if(f.parameter === "discharge" || f.parameter === "water level") {
 
                 //add link to highlight upstream catchment
                 featurePropertyDiv.append($('<span>', {
@@ -1232,13 +1389,61 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                             console.log("Error: " + req.responseText);
                         });
                     }
-                }).data('deviceCode', deviceCode)).append($('<br>'))
+                }).data('deviceCode', deviceCode)).append($('<br>'));
 
+                //add link to forecast, if supported
+                if(f.parameter === "discharge" && supportedDevices.indexOf(deviceCode) > -1) {
+
+                    featurePropertyDiv.append($('<span>', {
+                        'class': 'property_name property_link property_process',
+                        text: 'Get 6h forecast (data-driven)',
+                        id: sensorCode + 'forecast',
+                        //set graph
+                        click: function (evt) {
+
+                            //reset graph container
+                            jq_graphDiv.empty();
+                            //close graph, if shown already
+                            if (d3Graph.activeGraph(evt.target.id)) {
+                                f_removeGraph(evt.target.id);
+                                //hide graph container, if no graph is displayed
+                                if (d3Graph.numberOfGraphs() === 0)
+                                    jq_graphDiv.fadeOut(100);
+                                return;
+                            }
+                            //show graph div
+                            jq_graphDiv.fadeIn(100);
+                            //check, if measurements are available in cache
+                            if (stationForecasts[evt.target.id] !== undefined && stationForecasts[evt.target.id].length > 0) {
+                                f_addGraph(evt.target.id, sensorCode, stationForecasts[evt.target.id], forecastIntervals['6h'], f.parameter);
+                            }
+                            //request forecast
+                            else {
+                                //set timeframe
+                                var timeframe = forecastIntervals['6h'];
+
+                                //request OCPU
+                                var req = ocpu.call("x.octave.flood_nn", {'gauge': $(this).data('deviceCode')}, function (session) {
+
+                                    session.getObject(function (result) {
+                                        f_setStationForecast(evt.target.id, result);
+                                        f_addGraph(evt.target.id, sensorCode, stationForecasts[evt.target.id], timeframe, "discharge_pred");
+                                    });
+
+                                }).fail(function () {
+                                    console.log("Error: " + req.responseText);
+                                });
+                            }
+                        }
+                    }).data('deviceCode', deviceCode)).append($('<br>'))
+                }
             }
         }
 
         //init RADOLAN timeseries links for polygon data
         if(f.getGeometry().getType() === "MultiPolygon" || f.getGeometry().getType() === "Polygon") {
+
+            f.parameter = "precipitation_sum";
 
             //init RADOLAN timeseries links
             var radolanRWDiv = $('<span>', {'class': 'property_links'});
@@ -1267,7 +1472,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                         jq_graphDiv.fadeIn(100);
                         //check, if measurements are available in cache
                         if(radolanTimeseries[evt.target.id] !== undefined && radolanTimeseries[evt.target.id].length > 0){
-                            f_addGraph(evt.target.id, radolanTimeseries[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent]);
+                            f_addGraph(evt.target.id, "radolan", radolanTimeseries[evt.target.id], sensorHubDownloadIntervals[evt.target.textContent], f.parameter);
                         }
                         //request timeseries
                         else {
@@ -1282,7 +1487,7 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                             var req = ocpu.call("x.app.radolan.timeseries", {'t.start': f_getRADOLANTimestamp(timeframe['start']), 't.end': f_getRADOLANTimestamp(timeframe['end']), 'extent': mask}, function(session) {
                                 session.getObject(function(result){
                                     f_setRADOLANMeasurements(evt.target.id, result);
-                                    f_addGraph(evt.target.id, radolanTimeseries[evt.target.id], timeframe);
+                                    f_addGraph(evt.target.id, "radolan", radolanTimeseries[evt.target.id], timeframe, f.parameter);
                                 });
 
                             }).fail(function(){
@@ -1337,7 +1542,7 @@ function f_setRADOLANMeasurements(id, ocpu) {
     var measurements = [];
     for(var i=0; i<ocpu.length; i++){
         measurements.push({
-            'timestamp': f_parseRADOLANTimestamp(ocpu[i]['timestamp']),
+            'timestamp': f_parseUNIXTimestamp(ocpu[i]['timestamp']),
             'value': ocpu[i]['sum']
         })
     }
@@ -1345,11 +1550,32 @@ function f_setRADOLANMeasurements(id, ocpu) {
 
 }
 
+
+/**
+ * add forecast measurements to cache
+ * @param id measurements identifier
+ * @param ocpu measurements from OCPU
+ */
+function f_setStationForecast(id, ocpu) {
+
+    //parse measurement values
+    var measurements = [];
+    for(var i=0; i<ocpu.length; i++){
+        measurements.push({
+            'timestamp': new Date(Date.parse(ocpu[i]['timestamp'] + '+00:00')),
+            'value': ocpu[i]['value']
+        })
+    }
+    stationForecasts[id] = measurements;
+
+}
+
+
 /**
  * parse timestamp from R
  * @param timestamp seconds since 01.01.1970
  */
-function f_parseRADOLANTimestamp(timestamp){
+function f_parseUNIXTimestamp(timestamp){
     return new Date(timestamp * 1000);
 }
 
@@ -1370,7 +1596,7 @@ function f_getRADOLANTimestamp(timestamp) {
  * @param interval time interval for measurements
  * @returns {string} link to SensorHub
  */
-function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements, interval){
+function f_getSensorHubLink(sensorHubAPI, networkCode, deviceCode, sensorCode, measurements, interval){
     var url = sensorHubAPI + "/networks/" + networkCode + "/devices/" + deviceCode + "/sensors/" + sensorCode;
     if(!measurements)
         return url;
@@ -1381,16 +1607,18 @@ function f_getSensorHubLink(networkCode, deviceCode, sensorCode, measurements, i
 /**
  * initialize measurement graph
  * @param id measurement id
+ * @param sensor sensor name
  * @param measurements input measurements
  * @param timeframe graph timeframe
+ * @param type graph type
  */
-function f_addGraph(id, measurements, timeframe) {
+function f_addGraph(id, sensor, measurements, timeframe, type) {
 
     //get measurements
     if(measurements === undefined || measurements.length === 0)
         return;
 
-    d3Graph.addGraph(id, id, measurements, timeframe, null);
+    d3Graph.addGraph(id, sensor, measurements, timeframe, null, type);
 }
 
 /**
@@ -1503,7 +1731,7 @@ function f_sortLayers(items, id) {
 }
 
 /**
- * change position( of elements, if certain elements are shown/hidden
+ * change position of elements, if certain elements are shown/hidden
  */
 
 $(function () {

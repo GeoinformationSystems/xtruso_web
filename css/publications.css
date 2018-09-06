@@ -1,29 +1,3 @@
-#language {
-    top:15px;
-    left:10px;
-    position: absolute;
-}
-
-#language a {
-    height: 20px;
-    width: 30px;
-    margin-right:5px;
-    display: inline-block;
-    background-size:cover;
-}
-
-#language a:hover {
-    cursor: pointer;
-}
-
-#lang_de {
-    background-image: url(../img/logo_de.png);
-}
-
-#lang_en {
-    background-image: url(../img/logo_gb.png);
-}
-
 #container_mxGraph {
     overflow-x:auto;
     overflow-y:hidden;
