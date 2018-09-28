@@ -27,152 +27,39 @@ var mxAnchors = {
     bottomright: new mxConnectionConstraint(new mxPoint(1, 1))
 };
 
-//set of english terms
-var txt_en = {
-    'lang_de': 'German',
-    'lang_en': 'English',
-    'logo_link': 'go to publication',
-    'logo_bibtex': 'copy bibtex entry to clipboard',
-    'logo_details': 'show/hide details',
-    'logo_editclass': 'edit classification',
-    'class_01_acqhmed_main': 'Acquisition of\nhydro-meteorological\ndata',
-    'class_02_provhmed_main': 'Provision of\nhydro-meteorological\ntime series',
-    'class_03_acqhmod_main': 'Acquisition of\nhydro-morphological\ndata',
-    'class_04_mod_main': 'Hydro-meteorological\nmodelling',
-    'class_05_inf_main': 'Information\ninfrastructure',
-    'class_0101_radar_sub2': 'Ground radar',
-    'class_0102_photo_sub2': 'Photogrammetry',
-    'class_0103_lcsens_sub2': 'Low-cost sensors',
-    'class_0104_cs_sub2': 'Citizen Science',
-    'class_0201_timeseries_sub2': 'Time series\ngeneration',
-    'class_0202_qa_sub2': 'Quality assurance',
-    'class_0301_rs_sub2': 'Photogrammetry and\nremote sensing',
-    'class_0302_uav_sub2': 'Unmanned Aerial\nVehicle (UAV)',
-    'class_0303_uwv_sub2': 'Unmanned Water\nVehicle (UWV)',
-    'class_0401_hydmod_sub1': 'Hydrological\nmodelling',
-    'class_0402_metmod_sub1': 'Meteorological\nmodelling',
-    'class_040201_disagg_sub2': 'Disaggregation of\nradar data',
-    'class_040202_moist_sub2': 'Soil moisture\nmodelling',
-    'class_040101_datamod_sub2': 'Data driven\nmodelling',
-    'class_040102_detmod_sub2': 'Conceptual\nmodelling',
-    'class_0501_prov_sub1': 'Information\nprovision',
-    'class_0502_interact_sub1': 'User interaction',
-    'class_050101_manage_sub2': 'Data management',
-    'class_050102_vis_sub2': 'Visualization',
-    'class_050103_warn_sub2': 'Flash flood\nwarning',
-    'class_050104_analy_sub2': 'Flash flood\nanalysis',
-    'class_050105_fusion_sub2': 'Spatial data fusion',
-    'class_050201_feedback_sub2': 'User feedback',
-    'class_050202_processing_sub2': 'ad hoc data\nprocessing',
-    'class_050203_adapt_sub2': 'Adaptive modelling'
-};
-
-//set of german terms
-var txt_de = {
-    'lang_de': 'Deutsch',
-    'lang_en': 'Englisch',
-    'logo_link': 'Link zur Publikation',
-    'logo_bibtex': 'Kopiere Bibtex in Zwischenablage',
-    'logo_details': 'Zeige/Verstecke Details',
-    'logo_editclass': 'Editiere Klassifikation',
-    'class_01_acqhmed_main': 'Erfassung hydro-\nmeteorologischer\nDaten',
-    'class_02_provhmed_main': 'Bereitstellung hydro-\nmeteorologischer\nZeitreihen',
-    'class_03_acqhmod_main': 'Erfassung hydro-\nmorphologischer\nDaten',
-    'class_04_mod_main': 'Hydro-\nmeteorologische\nModellierung',
-    'class_05_inf_main': 'Informations-\ninfrastruktur',
-    'class_0101_radar_sub2': 'Bodenradar',
-    'class_0102_photo_sub2': 'Photogrammetrie',
-    'class_0103_lcsens_sub2': 'Low-cost Sensorik',
-    'class_0104_cs_sub2': 'Citizen Science',
-    'class_0201_timeseries_sub2': 'Erstellung von\nZeitreihen',
-    'class_0202_qa_sub2': 'Qualitätssicherung',
-    'class_0301_rs_sub2': 'Photogrammetrie und\nFernerkundung',
-    'class_0302_uav_sub2': 'Unmanned Aerial\nVehicle (UAV)',
-    'class_0303_uwv_sub2': 'Unmanned Water\nVehicle (UWV)',
-    'class_0401_hydmod_sub1': 'Hydrologische\nModellierung',
-    'class_0402_metmod_sub1': 'Meteorologische\nModelling',
-    'class_040201_disagg_sub2': 'Disaggregation von\nRadardaten',
-    'class_040202_moist_sub2': 'Bodenfeuchte-\nmodellierung',
-    'class_040101_datamod_sub2': 'Datengetriebene\nModellierung',
-    'class_040102_detmod_sub2': 'Konzeptionelle\nModellierung',
-    'class_0501_prov_sub1': 'Informations-\nbereitstellung',
-    'class_0502_interact_sub1': 'Nutzerinteraktion',
-    'class_050101_manage_sub2': 'Datenmanagement',
-    'class_050102_vis_sub2': 'Visualisierung',
-    'class_050103_warn_sub2': 'Hochwasser-\nwarnung',
-    'class_050104_analy_sub2': 'Hochwasser-\nanalyse',
-    'class_050105_fusion_sub2': 'Geodatenfusion',
-    'class_050201_feedback_sub2': 'Nutzerfeedback',
-    'class_050202_processing_sub2': 'Ad hoc\nDatenverarbeitung',
-    'class_050203_adapt_sub2': 'Adaptive Modellierung'
-};
-
-//currently active set of terms
-var txt_active = null;
-
 //init
 $(function() {
-
-    //init language switch
-    $('#language').append($('<a>', {
-        id: 'lang_de',
-        click: function () {
-            if (txt_active !== txt_de)
-                f_setLanguage(txt_de);
-        }
-    })).append($('<a>', {
-        id: 'lang_en',
-        click: function () {
-            if (txt_active !== txt_en)
-                f_setLanguage(txt_en);
-        }
-    }));
-
-    //init graph
     f_initGraph();
-
-    //init articles
     f_initPublications();
 });
 
 /**
- * switch language
- * @param txt target language set
+ * switch language for MX items
  */
-function f_setLanguage(txt) {
-
-    //return, if txt is already active
-    if(txt_active === txt)
-        return;
-
-    txt_active = txt;
-
-    //change language selection title
-    document.getElementById('lang_de').title = txt_active['lang_de'];
-    document.getElementById('lang_en').title = txt_active['lang_en'];
+function f_setMXDictionary() {
 
     //change icon titles
     var link_icons = document.getElementsByClassName('link');
     for (var i = 0; i < link_icons.length; i++){
-        link_icons[i].title = txt_active['logo_link'];
+        link_icons[i].title = dictionaries[lang]['MX_logo_link'];
     }
     var bibtex_icons = document.getElementsByClassName('bibtex');
     for (i = 0; i < bibtex_icons.length; i++){
-        bibtex_icons[i].title = txt_active['logo_bibtex'];
+        bibtex_icons[i].title = dictionaries[lang]['MX_logo_bibtex'];
     }
     var details_icons = document.getElementsByClassName('details');
     for (i = 0; i < details_icons.length; i++){
-        details_icons[i].title = txt_active['logo_details'];
+        details_icons[i].title = dictionaries[lang]['MX_logo_details'];
     }
     var editclass_icons = document.getElementsByClassName('editclass');
     for (i = 0; i < editclass_icons.length; i++){
-        editclass_icons[i].title = txt_active['logo_editclass'];
+        editclass_icons[i].title = dictionaries[lang]['MX_logo_editclass'];
     }
 
     //set graph values
     for (var key in mxElements) {
-        if (txt_active.hasOwnProperty(key))
-            mxModel.setValue(mxElements[key], txt_active[key]);
+        if (dictionaries[lang].hasOwnProperty(key))
+            mxModel.setValue(mxElements[key], dictionaries[lang][key]);
     }
 }
 
@@ -258,81 +145,81 @@ function f_initGraph() {
     try {
 
         //main tasks
-        f_addVertex('class_01_acqhmed_main', 600, 55, 150, 60);
-        f_addVertex('class_02_provhmed_main', 600, 160, 150, 60);
-        f_addVertex('class_03_acqhmod_main', 400, 55, 150, 60);
-        f_addVertex('class_04_mod_main', 200, 160, 150, 60);
-        f_addVertex('class_05_inf_main', 400, 260, 150, 60);
-        f_connectVertices('class_01_acqhmed_main', 'class_02_provhmed_main', mxAnchors.bottom, mxAnchors.top);
-        f_connectVertices('class_02_provhmed_main', 'class_04_mod_main', mxAnchors.left, mxAnchors.right);
-        f_connectVertices('class_03_acqhmod_main', 'class_04_mod_main', mxAnchors.left, mxAnchors.top);
-        f_connectVertices('class_03_acqhmod_main', 'class_05_inf_main', mxAnchors.bottom, mxAnchors.top);
-        f_connectVertices('class_04_mod_main', 'class_05_inf_main', mxAnchors.bottom, mxAnchors.left);
-        f_connectVertices('class_02_provhmed_main', 'class_05_inf_main', mxAnchors.bottom, mxAnchors.right)
+        f_addVertex('MX_01_acqhmed_main', 600, 55, 150, 60);
+        f_addVertex('MX_02_provhmed_main', 600, 160, 150, 60);
+        f_addVertex('MX_03_acqhmod_main', 400, 55, 150, 60);
+        f_addVertex('MX_04_mod_main', 200, 160, 150, 60);
+        f_addVertex('MX_05_inf_main', 400, 260, 150, 60);
+        f_connectVertices('MX_01_acqhmed_main', 'MX_02_provhmed_main', mxAnchors.bottom, mxAnchors.top);
+        f_connectVertices('MX_02_provhmed_main', 'MX_04_mod_main', mxAnchors.left, mxAnchors.right);
+        f_connectVertices('MX_03_acqhmod_main', 'MX_04_mod_main', mxAnchors.left, mxAnchors.top);
+        f_connectVertices('MX_03_acqhmod_main', 'MX_05_inf_main', mxAnchors.bottom, mxAnchors.top);
+        f_connectVertices('MX_04_mod_main', 'MX_05_inf_main', mxAnchors.bottom, mxAnchors.left);
+        f_connectVertices('MX_02_provhmed_main', 'MX_05_inf_main', mxAnchors.bottom, mxAnchors.right)
 
         //subtasks for the acquisition of hydro-meteorological data
-        f_addVertex('class_0101_radar_sub2', 700, 0, 150, 30);
-        f_addVertex('class_0102_photo_sub2', 800, 35, 150, 30);
-        f_addVertex('class_0103_lcsens_sub2', 800, 70, 150, 30);
-        f_addVertex('class_0104_cs_sub2', 800, 105, 150, 30);
-        f_connectVertices('class_01_acqhmed_main', 'class_0101_radar_sub2', mxAnchors.right, mxAnchors.bottom);
-        f_connectVertices('class_01_acqhmed_main', 'class_0102_photo_sub2', mxAnchors.right, mxAnchors.left);
-        f_connectVertices('class_01_acqhmed_main', 'class_0103_lcsens_sub2', mxAnchors.right, mxAnchors.left);
-        f_connectVertices('class_01_acqhmed_main', 'class_0104_cs_sub2', mxAnchors.right, mxAnchors.left);
+        f_addVertex('MX_0101_radar_sub2', 700, 0, 150, 30);
+        f_addVertex('MX_0102_photo_sub2', 800, 35, 150, 30);
+        f_addVertex('MX_0103_lcsens_sub2', 800, 70, 150, 30);
+        f_addVertex('MX_0104_cs_sub2', 800, 105, 150, 30);
+        f_connectVertices('MX_01_acqhmed_main', 'MX_0101_radar_sub2', mxAnchors.right, mxAnchors.bottom);
+        f_connectVertices('MX_01_acqhmed_main', 'MX_0102_photo_sub2', mxAnchors.right, mxAnchors.left);
+        f_connectVertices('MX_01_acqhmed_main', 'MX_0103_lcsens_sub2', mxAnchors.right, mxAnchors.left);
+        f_connectVertices('MX_01_acqhmed_main', 'MX_0104_cs_sub2', mxAnchors.right, mxAnchors.left);
 
         //subtasks for the provision of hydro-meteorological time series
-        f_addVertex('class_0201_timeseries_sub2', 800, 175, 150, 30);
-        f_addVertex('class_0202_qa_sub2', 800, 210, 150, 30);
-        f_connectVertices('class_02_provhmed_main', 'class_0201_timeseries_sub2', mxAnchors.right, mxAnchors.left);
-        f_connectVertices('class_02_provhmed_main', 'class_0202_qa_sub2', mxAnchors.right, mxAnchors.left);
+        f_addVertex('MX_0201_timeseries_sub2', 800, 175, 150, 30);
+        f_addVertex('MX_0202_qa_sub2', 800, 210, 150, 30);
+        f_connectVertices('MX_02_provhmed_main', 'MX_0201_timeseries_sub2', mxAnchors.right, mxAnchors.left);
+        f_connectVertices('MX_02_provhmed_main', 'MX_0202_qa_sub2', mxAnchors.right, mxAnchors.left);
 
         //subtasks for the acquisition of hydro-morphological data
-        f_addVertex('class_0301_rs_sub2', 160, 0, 150, 30);
-        f_addVertex('class_0302_uav_sub2', 320, 0, 150, 30);
-        f_addVertex('class_0303_uwv_sub2', 480, 0, 150, 30);
-        f_connectVertices('class_03_acqhmod_main', 'class_0301_rs_sub2', mxAnchors.top, mxAnchors.bottom);
-        f_connectVertices('class_03_acqhmod_main', 'class_0302_uav_sub2', mxAnchors.top, mxAnchors.bottom);
-        f_connectVertices('class_03_acqhmod_main', 'class_0303_uwv_sub2', mxAnchors.top, mxAnchors.bottom);
+        f_addVertex('MX_0301_rs_sub2', 160, 0, 150, 30);
+        f_addVertex('MX_0302_uav_sub2', 320, 0, 150, 30);
+        f_addVertex('MX_0303_uwv_sub2', 480, 0, 150, 30);
+        f_connectVertices('MX_03_acqhmod_main', 'MX_0301_rs_sub2', mxAnchors.top, mxAnchors.bottom);
+        f_connectVertices('MX_03_acqhmod_main', 'MX_0302_uav_sub2', mxAnchors.top, mxAnchors.bottom);
+        f_connectVertices('MX_03_acqhmod_main', 'MX_0303_uwv_sub2', mxAnchors.top, mxAnchors.bottom);
 
         //subtasks for hydro-meteorological modelling
-        f_addVertex('class_0402_metmod_sub1', 100, 110, 150, 30);
-        f_addVertex('class_0401_hydmod_sub1', 100, 240, 150, 30);
-        f_connectVertices('class_04_mod_main', 'class_0402_metmod_sub1', mxAnchors.left, mxAnchors.bottom);
-        f_connectVertices('class_04_mod_main', 'class_0401_hydmod_sub1', mxAnchors.left, mxAnchors.top);
+        f_addVertex('MX_0402_metmod_sub1', 100, 110, 150, 30);
+        f_addVertex('MX_0401_hydmod_sub1', 100, 240, 150, 30);
+        f_connectVertices('MX_04_mod_main', 'MX_0402_metmod_sub1', mxAnchors.left, mxAnchors.bottom);
+        f_connectVertices('MX_04_mod_main', 'MX_0401_hydmod_sub1', mxAnchors.left, mxAnchors.top);
 
-        f_addVertex('class_040201_disagg_sub2', 0, 70, 150, 30);
-        f_addVertex('class_040202_moist_sub2', 0, 150, 150, 30);
-        f_addVertex('class_040101_datamod_sub2', 0, 205, 150, 30);
-        f_addVertex('class_040102_detmod_sub2', 0, 275, 150, 30);
-        f_connectVertices('class_0402_metmod_sub1', 'class_040201_disagg_sub2', mxAnchors.left, mxAnchors.bottom);
-        f_connectVertices('class_0402_metmod_sub1', 'class_040202_moist_sub2', mxAnchors.left, mxAnchors.top);
-        f_connectVertices('class_0401_hydmod_sub1', 'class_040101_datamod_sub2', mxAnchors.left, mxAnchors.bottom);
-        f_connectVertices('class_0401_hydmod_sub1', 'class_040102_detmod_sub2', mxAnchors.left, mxAnchors.top);
+        f_addVertex('MX_040201_disagg_sub2', 0, 70, 150, 30);
+        f_addVertex('MX_040202_moist_sub2', 0, 150, 150, 30);
+        f_addVertex('MX_040101_datamod_sub2', 0, 205, 150, 30);
+        f_addVertex('MX_040102_detmod_sub2', 0, 275, 150, 30);
+        f_connectVertices('MX_0402_metmod_sub1', 'MX_040201_disagg_sub2', mxAnchors.left, mxAnchors.bottom);
+        f_connectVertices('MX_0402_metmod_sub1', 'MX_040202_moist_sub2', mxAnchors.left, mxAnchors.top);
+        f_connectVertices('MX_0401_hydmod_sub1', 'MX_040101_datamod_sub2', mxAnchors.left, mxAnchors.bottom);
+        f_connectVertices('MX_0401_hydmod_sub1', 'MX_040102_detmod_sub2', mxAnchors.left, mxAnchors.top);
 
         //subtasks for information infrastructure
-        f_addVertex('class_0501_prov_sub1', 300, 362, 150, 30);
-        f_addVertex('class_0502_interact_sub1', 500, 362, 150, 30);
-        f_connectVertices('class_05_inf_main', 'class_0501_prov_sub1', mxAnchors.bottom, mxAnchors.top);
-        f_connectVertices('class_05_inf_main', 'class_0502_interact_sub1', mxAnchors.bottom, mxAnchors.top);
+        f_addVertex('MX_0501_prov_sub1', 300, 362, 150, 30);
+        f_addVertex('MX_0502_interact_sub1', 500, 362, 150, 30);
+        f_connectVertices('MX_05_inf_main', 'MX_0501_prov_sub1', mxAnchors.bottom, mxAnchors.top);
+        f_connectVertices('MX_05_inf_main', 'MX_0502_interact_sub1', mxAnchors.bottom, mxAnchors.top);
 
-        f_addVertex('class_050101_manage_sub2', 210, 310, 150, 30);
-        f_addVertex('class_050102_vis_sub2', 120, 345, 150, 30);
-        f_addVertex('class_050103_warn_sub2', 120, 380, 150, 30);
-        f_addVertex('class_050104_analy_sub2', 210, 415, 150, 30);
-        f_connectVertices('class_0501_prov_sub1', 'class_050101_manage_sub2', mxAnchors.left, mxAnchors.bottom);
-        f_connectVertices('class_0501_prov_sub1', 'class_050102_vis_sub2', mxAnchors.left, mxAnchors.right);
-        f_connectVertices('class_0501_prov_sub1', 'class_050103_warn_sub2', mxAnchors.left, mxAnchors.right);
-        f_connectVertices('class_0501_prov_sub1', 'class_050104_analy_sub2', mxAnchors.left, mxAnchors.top);
+        f_addVertex('MX_050101_manage_sub2', 210, 310, 150, 30);
+        f_addVertex('MX_050102_vis_sub2', 120, 345, 150, 30);
+        f_addVertex('MX_050103_warn_sub2', 120, 380, 150, 30);
+        f_addVertex('MX_050104_analy_sub2', 210, 415, 150, 30);
+        f_connectVertices('MX_0501_prov_sub1', 'MX_050101_manage_sub2', mxAnchors.left, mxAnchors.bottom);
+        f_connectVertices('MX_0501_prov_sub1', 'MX_050102_vis_sub2', mxAnchors.left, mxAnchors.right);
+        f_connectVertices('MX_0501_prov_sub1', 'MX_050103_warn_sub2', mxAnchors.left, mxAnchors.right);
+        f_connectVertices('MX_0501_prov_sub1', 'MX_050104_analy_sub2', mxAnchors.left, mxAnchors.top);
 
-        f_addVertex('class_050203_adapt_sub2', 590, 310, 150, 30);
-        f_addVertex('class_050201_feedback_sub2', 680, 345, 150, 30);
-        f_addVertex('class_050202_processing_sub2', 680, 380, 150, 30);
-        f_addVertex('class_050105_fusion_sub2', 400, 415, 150, 30);
-        f_connectVertices('class_0502_interact_sub1', 'class_050203_adapt_sub2', mxAnchors.right, mxAnchors.bottom);
-        f_connectVertices('class_0502_interact_sub1', 'class_050201_feedback_sub2', mxAnchors.right, mxAnchors.left);
-        f_connectVertices('class_0502_interact_sub1', 'class_050202_processing_sub2', mxAnchors.right, mxAnchors.left);
-        f_connectVertices('class_0502_interact_sub1', 'class_050105_fusion_sub2', mxAnchors.bottom, mxAnchors.right);
-        f_connectVertices('class_0501_prov_sub1', 'class_050105_fusion_sub2', mxAnchors.bottom, mxAnchors.left);
+        f_addVertex('MX_050203_adapt_sub2', 590, 310, 150, 30);
+        f_addVertex('MX_050201_feedback_sub2', 680, 345, 150, 30);
+        f_addVertex('MX_050202_processing_sub2', 680, 380, 150, 30);
+        f_addVertex('MX_050105_fusion_sub2', 400, 415, 150, 30);
+        f_connectVertices('MX_0502_interact_sub1', 'MX_050203_adapt_sub2', mxAnchors.right, mxAnchors.bottom);
+        f_connectVertices('MX_0502_interact_sub1', 'MX_050201_feedback_sub2', mxAnchors.right, mxAnchors.left);
+        f_connectVertices('MX_0502_interact_sub1', 'MX_050202_processing_sub2', mxAnchors.right, mxAnchors.left);
+        f_connectVertices('MX_0502_interact_sub1', 'MX_050105_fusion_sub2', mxAnchors.bottom, mxAnchors.right);
+        f_connectVertices('MX_0501_prov_sub1', 'MX_050105_fusion_sub2', mxAnchors.bottom, mxAnchors.left);
 
 
     }
@@ -568,8 +455,8 @@ function f_initPublications() {
                 articles_container.append(articleArray[i])
             }
 
-            //set language and init mxGraph
-            f_setLanguage(txt_en);
+            //set dictionary entries
+            f_setMXDictionary();
         }
     };
     xmlhttp.open("GET", "resources/xtruso.bib", true);
@@ -792,8 +679,8 @@ function f_createArticles() {
 
                     //get available classifications
                     var classes = []
-                    for(entry in txt_active){
-                        if(entry.startsWith('class'))
+                    for(entry in dictionaries[lang]){
+                        if(entry.startsWith('MX'))
                             classes.push(entry);
                     }
 
@@ -806,7 +693,7 @@ function f_createArticles() {
                     for(var i = 0; i < classes.length; i++) {
                         var currentClass = f_getClassificationType(classes[i]);
                         form.append('<label class="checkbox_' + currentClass + '">' +
-                            '<input type="checkbox" value="' + classes[i] + '"' + (article['xtruso_componentArray'].indexOf(classes[i]) !== -1 ? 'checked="checked"' : '') + ' onchange="f_toggleClassification(this,\'' + this.id.substr(10) + '\')" />' + txt_active[classes[i]] +
+                            '<input type="checkbox" value="' + classes[i] + '"' + (article['xtruso_componentArray'].indexOf(classes[i]) !== -1 ? 'checked="checked"' : '') + ' onchange="f_toggleClassification(this,\'' + this.id.substr(10) + '\')" />' + dictionaries[lang][classes[i]] +
                             '</label>');
                         if(i < classes.length - 1 && f_getClassificationType(classes[i+1]) !== currentClass)
                             form.append('<br>');

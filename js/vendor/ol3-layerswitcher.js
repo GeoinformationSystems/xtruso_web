@@ -253,13 +253,24 @@
                 label.className += ' disabled';
             }
 
+            /**
+             * set label style based on layer
+             */
+            label.style.color = input.checked ? "#003C88" : "#888888";
+            if(input.type === 'checkbox') {
+                var style = f_getOverlayStyleById(input.id, false, false);
+                var color = input.checked ? f_getStrokeColor(style) : f_getFillColor(style);
+                label.style.borderLeft = "15px solid " + (color !== null ? color : (input.checked ? "#EEEEEE" : "#888888"));
+            }
+
             legendDiv.appendChild(label);
             li.appendChild(legendDiv);
 
             /**
              * append opacity slider
              */
-            li.appendChild(f_getOpacitySlider(lyr, lyrId, input.checked));
+            if(input.checked)
+                li.appendChild(f_getOpacitySlider(lyr, lyrId, label.style.borderLeftColor));
 
         }
 
@@ -350,9 +361,11 @@
  * get opacity slider for specified layer
  * @param lyr input layer
  * @param lyrId layer id
- * @param visible flag: layer is checked
+ * @param color slider color
  */
-function f_getOpacitySlider(lyr, lyrId, visible){
+function f_getOpacitySlider(lyr, lyrId, color){
+    var colorArray = color.replace(/[^\d,]/g, '').split(',');
+    var opacity = lyr.getOpacity();
     var slider = $(document.createElement('li'));
     slider.attr("id", lyrId + "_slider");
     slider.className = "slider";
@@ -360,15 +373,29 @@ function f_getOpacitySlider(lyr, lyrId, visible){
         min: 0,
         max: 100,
         step: 5,
-        value: lyr.getOpacity() * 100,
+        value: opacity * 100,
         slide: function(event, ui) {
             lyr.setOpacity(ui.value / 100);
+            ui.handle.style.background = "rgb(" + getGradientValue([255,255,255], colorArray, ui.value / 100).join() + ")";
         }
     });
-    //set slider visibility
-    if(visible)
-        slider.show();
-    else
-        slider.hide();
+    //set color
+    slider.find(".ui-slider-handle")[0].style.background = "rgb(" + getGradientValue([255,255,255], colorArray, opacity).join(",") + ")";
+    slider[0].style.background = "linear-gradient(to right, white, " + color + ")";
     return slider[0];
+}
+
+/**
+ * get RGB value for gradient position
+ * @param color1 first color
+ * @param color2 second color
+ * @param position position [0...1]
+ * @return *[] RGB color at position
+ */
+function getGradientValue(color1, color2, position) {
+    var w2 = position;
+    var w1 = 1 - position;
+    return [Math.round(color1[0] * w1 + color2[0] * w2),
+        Math.round(color1[1] * w1 + color2[1] * w2),
+        Math.round(color1[2] * w1 + color2[2] * w2)];
 }

@@ -34,7 +34,7 @@ html {
     right:0;
     width: 60px;
     height: 60px;
-    z-index: 200;
+    z-index: 1000;
 }
 
 #loading_symbol {
@@ -314,8 +314,8 @@ article .article_content p:first-of-type {
  * language selection
  */
 #language {
-    top:15px;
-    left:10px;
+    top:25px;
+    left:12px;
     position: absolute;
 }
 
@@ -325,16 +325,9 @@ article .article_content p:first-of-type {
     margin-right:5px;
     display: inline-block;
     background-size:cover;
+    color: white;
 }
 
 #language a:hover {
     cursor: pointer;
-}
-
-#lang_de {
-    background-image: url(../img/logo_de.png);
-}
-
-#lang_en {
-    background-image: url(../img/logo_gb.png);
 }

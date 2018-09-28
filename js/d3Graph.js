@@ -10,16 +10,32 @@ function D3Graph(div) {
     //get graph container object
     this.container = $("#" + div);
 
-    //set size and margins for display container
-    this.display = { height: this.container.height() * 0.95, left: 10, right: 20};
-    this.display.width = this.container.width() - this.display.left - this.display.right;
+    //get container height
+    this.getContainerHeight = function() {
+        return 0.3 * window.innerHeight;
+    };
 
-    //set margins for graph and context
-    this.display.chart = { top: this.display.height * 0.05, bottom: this.display.height * 0.2 };
-    this.display.context = { top: this.display.height * 0.85, bottom: this.display.height * 0.05 };
-    this.display.chart.height = this.display.height - this.display.chart.top - this.display.chart.bottom;
-    this.display.context.height = this.display.height - this.display.context.top - this.display.context.bottom;
-    this.display.context.translate_y = 0.8 * this.display.height;
+    //set default padding
+    this.paddingLeft = 0;
+    this.paddingRight = 20;
+
+    //reset margins
+    this.setSize = function() {
+
+        //set size and margins for display container
+        this.display = { height: this.getContainerHeight() * 0.95, left: this.paddingLeft, right: this.paddingRight};
+        this.display.width = this.container.width() - this.display.left - this.display.right;
+
+        //set margins for graph and context
+        this.display.chart = { top: this.display.height * 0.05, bottom: this.display.height * 0.2 };
+        this.display.context = { top: this.display.height * 0.85, bottom: this.display.height * 0.05 };
+        this.display.chart.height = this.display.height - this.display.chart.top - this.display.chart.bottom;
+        this.display.context.height = this.display.height - this.display.context.top - this.display.context.bottom;
+        this.display.context.translate_y = 0.8 * this.display.height;
+    };
+
+    //set size
+    this.setSize();
 
     //set bar width for context
     this.barWidth = 2;
@@ -39,18 +55,6 @@ function D3Graph(div) {
     this.timeOptions = { };
 
     this.yRange = { };
-
-    //chart themes
-    this.themes = {
-        "default": f_createTheme("NA", "NA", "NA", false, "line", "#000000", "#111111", "#222222"),
-        "precipitation":  f_createTheme("precipitation", "P", "mm/h", true, "area", "#0e3679", "#1f72aa", "#0596aa"),
-        "precipitation_sum": f_createTheme("precipitation sum", "P sum", "1000m³/h", true, "area", "#0e3679", "#1f72aa", "#0596aa"),
-        "humidity":  f_createTheme("humidity", "H", "%", false, "line", "#00791b", "#04aa02", "#55aa00"),
-        "temperature":  f_createTheme("temperature", "T", "°C", false, "line", "#b02700", "#aa7a1e", "#aa9c02"),
-        "discharge": f_createTheme("discharge", "Q", "m³/s", false, "line", "#7B4173", "#A55194", "#CE6DBD"),
-        "discharge_pred": f_createTheme("discharge forecast", "Q", "m³/s", false, "line", "#c02a20", "#ea2f22", "#ff3627"),
-        "water level": f_createTheme("water level", "W", "cm", false, "line", "#843C39", "#AD494A", "#D6616B")
-    };
 
     /**
      * check if graph id is among the active graphs
@@ -78,9 +82,9 @@ function D3Graph(div) {
      * @param measurements xy values to be drawn (x = time)
      * @param totalTimeframe total timeframe
      * @param visibleTimeframe visible timeframe
-     * @param parameter measured parameter
+     * @param phenomenon measured phenomenon
      */
-    this.addGraph = function(id, sensor, measurements, totalTimeframe, visibleTimeframe, parameter) {
+    this.addGraph = function(id, sensor, measurements, totalTimeframe, visibleTimeframe, phenomenon) {
 
         if(id === undefined || measurements === undefined || measurements.length === 0)
             return;
@@ -90,11 +94,8 @@ function D3Graph(div) {
         graph.id = id;
         graph.sensor = sensor;
 
-        //set parameter
-        if(this.themes[parameter] !== undefined)
-            graph.parameter = parameter;
-        else
-            graph.parameter = 'default';
+        //set phenomenon
+        graph.phenomenon = phenomenon;
 
         //set measurements and timeframe
         graph.measurements = measurements;
@@ -158,7 +159,7 @@ function D3Graph(div) {
         var numOfGraphs = this.graphs.length;
 
         //adjust display width
-        this.display.left = 10 + numOfGraphs * 35;
+        this.display.left = this.paddingLeft + numOfGraphs * 35;
         this.display.width = this.container.width() - this.display.left - this.display.right;
 
         this.chart.attr("width", this.display.width);
@@ -187,13 +188,13 @@ function D3Graph(div) {
             if (typeof this.yRange[graph.sensor] !== 'undefined'){
 
                 //set min/max from this graph and previous graphs for this sensor
-                domain_min = Math.min(this.yRange[graph.sensor][0], Math.max(0, graph.yMin - yMargin));
+                domain_min = Math.min(this.yRange[graph.sensor][0], graph.yMin < 0 ? graph.yMin - yMargin : Math.max(0, graph.yMin - yMargin));
                 domain_max = Math.max(this.yRange[graph.sensor][1], graph.yMax + yMargin);
 
             } else {
 
                 //set min/max from this graph
-                domain_min = Math.max(0, graph.yMin - yMargin);
+                domain_min = graph.yMin < 0 ? graph.yMin - yMargin : Math.max(0, graph.yMin - yMargin);
                 domain_max = graph.yMax + yMargin;
             }
 
@@ -215,9 +216,9 @@ function D3Graph(div) {
             graph.xySingleValues = this.getSingleValues(graph.measurementValues);
 
             //set measurements color range
-            var c_index = this.themes[graph.parameter]['c_index'];
-            graph.chartColor = this.themes[graph.parameter]['color'][c_index > 2 ? 0 : c_index];
-            this.themes[graph.parameter]['c_index']++;
+            var c_index = graph.phenomenon['c_index'];
+            graph.chartColor = graph.phenomenon['color'](c_index > 2 ? 0 : c_index);
+            graph.phenomenon['c_index']++;
 
             graph.contextColor = this.getColorScale(graph.chartColor, graph.yMin, graph.yMax);
 
@@ -225,7 +226,7 @@ function D3Graph(div) {
             graph.chart = { yScale: d3.scaleLinear().range([this.display.chart.height, 0]) };
 
             //set y-domain, inverse if requested
-            if(this.themes[graph.parameter]['inverse'])
+            if(graph.phenomenon['inverse'])
                 graph.chart.yScale.domain([this.yRange[graph.sensor][1], this.yRange[graph.sensor][0]]);
             else
                 graph.chart.yScale.domain([this.yRange[graph.sensor][0], this.yRange[graph.sensor][1]]);
@@ -248,7 +249,7 @@ function D3Graph(div) {
 
             //show range max
             if (graph.measurementValues[0].hasOwnProperty('vmax')) {
-                graph.chart.max = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'vmax', this.themes[graph.parameter]['inverse']);
+                graph.chart.max = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'vmax', graph.phenomenon['inverse']);
                 this.chart.append("path")
                     .datum(graph.measurementValues)
                     .attr("class", "area " + "area_max_" + i)
@@ -259,7 +260,7 @@ function D3Graph(div) {
 
             //show range min
             if (graph.measurementValues[0].hasOwnProperty('vmin')) {
-                graph.chart.min = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'vmin', this.themes[graph.parameter]['inverse']);
+                graph.chart.min = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'vmin', graph.phenomenon['inverse']);
                 this.chart.append("path")
                     .datum(graph.measurementValues)
                     .attr("class", "area " + "area_min_" + i)
@@ -267,7 +268,7 @@ function D3Graph(div) {
                     .attr("d", graph.chart.min);
             }
 
-            if(this.themes[graph.parameter]['type'] === "line") {
+            if(graph.phenomenon['type'] === "line") {
 
                 graph.chart.line = this.getLineChart(this.chart.xScale, graph.chart.yScale, 'value');
 
@@ -279,20 +280,20 @@ function D3Graph(div) {
                     .attr("d", graph.chart.line);
 
                 //append circles for values surrounded by null
-                this.appendSingleValues(graph, this.chart, i, this.themes[graph.parameter]['inverse']);
+                this.appendSingleValues(graph, this.chart, i, graph.phenomenon['inverse']);
 
             }
 
             //append bar plot
-            else if(this.themes[graph.parameter]['type'] === "bar") {
+            else if(graph.phenomenon['type'] === "bar") {
 
-                this.appendBars(graph, this.chart, i, this.themes[graph.parameter]['inverse']);
+                this.appendBars(graph, this.chart, i, graph.phenomenon['inverse']);
 
             }
 
-            else if(this.themes[graph.parameter]['type'] === "area") {
+            else if(graph.phenomenon['type'] === "area") {
 
-                graph.chart.area = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'value', this.themes[graph.parameter]['inverse']);
+                graph.chart.area = this.getAreaChart(this.chart.xScale, graph.chart.yScale, 'value', graph.phenomenon['inverse']);
 
                 //append area chart
                 this.chart.append("path")
@@ -318,7 +319,7 @@ function D3Graph(div) {
             .attr("transform", "translate(0," + this.display.chart.height + ")")
             .call(this.chart.xAxis);
 
-        //add timeline graphs
+        //add timeline context graphs
         this.graphs.forEach(function(graph, i) {
             //set height for each context
             var height = this.display.context.height / this.graphs.length;
@@ -334,6 +335,12 @@ function D3Graph(div) {
                 .style("fill", function(d) { return graph.contextColor(d['value']); });
 
         }, this);
+
+        //append top line
+        this.chart.append("line")
+            .attr("x1", 0).attr("x2", this.display.width)
+            .attr("y1", 0).attr("y2", 0)
+            .attr("class", "axis-top");
 
         //init zoom and brush
         this.brush = this.getBrush();
@@ -389,7 +396,7 @@ function D3Graph(div) {
      */
     this.getLineChart = function(xScale, yScale, value) {
         return d3.line()
-            .defined(function(d) { return d[value] !== undefined; })
+            .defined(function(d) { return d[value] !== undefined && d[value] !== null; })
             .curve(d3.curveStep)
             .x(function(d) { return xScale(d['timestamp']); })
             .y(function(d) { return yScale(d[value]); })
@@ -470,7 +477,7 @@ function D3Graph(div) {
         //add svg element to graph container
         this.svg = d3.select("#" + div).append('svg')
             .attr("width", this.container.width())
-            .attr("height", this.container.height());
+            .attr("height", this.getContainerHeight());
 
         //define context element
         this.context = this.svg.append("g")
@@ -503,7 +510,7 @@ function D3Graph(div) {
                 .attr('x', this.chart.xScale(closest['timestamp']) + 3)
                 .attr('y', mouse_y - 10 - i * 15)
                 .style("fill", graph.chartColor);
-            this.setTooltipText(graph.tooltipText, closest, graph.parameter);
+            this.setTooltipText(graph, closest);
 
             //reset x-position of tooltip text, if out-of-bounds
             var textNode = graph.tooltipText.node();
@@ -522,7 +529,7 @@ function D3Graph(div) {
                 .style("opacity", ".75");
 
             //update tooltip line
-            if(this.themes[graph.parameter]['inverse']) {
+            if(graph.phenomenon['inverse']) {
                 graph.tooltipLine
                     .attr("x1", this.chart.xScale(closest['timestamp'])).attr("x2", this.chart.xScale(closest['timestamp']))
                     .attr("y1", this.display.chart.top)
@@ -544,20 +551,23 @@ function D3Graph(div) {
 
     /**
      * set tooltip text
-     * @param textBox input text box
+     * @param graph input graph
      * @param closest closest measurement
-     * @param parameter measured parameter
      */
-    this.setTooltipText = function(textBox, closest, parameter){
+    this.setTooltipText = function(graph, closest){
+        var textBox = graph.tooltipText;
+        var phenomenon = graph.phenomenon;
         textBox.html(null);
+        textBox.append("tspan")
+            .text(graph.sensor + "@");
         textBox.append("tspan")
             .text(this.formatDate(closest['timestamp']) + ": ");
         textBox.append("tspan")
             .style('font-weight', 'bold')
             .text(closest['value'].toFixed(2));
-        if(parameter !== 'default')
+        if(phenomenon !== 'default')
             textBox.append("tspan")
-                .text(" (" + this.themes[parameter]['short'] + " in " + this.themes[parameter]['uom'] + ")");
+                .text(" (" + phenomenon['short'] + " in " + phenomenon['uom'] + ")");
     };
 
     /**
@@ -577,8 +587,8 @@ function D3Graph(div) {
     this.reset = function() {
         this.empty(false);
         this.init();
-        for(var theme in this.themes){
-            this.themes[theme]['c_index'] = 0;
+        for(var theme in phenomena){
+            phenomena[theme]['c_index'] = 0;
         }
         this.yRange = { };
     };
@@ -823,15 +833,15 @@ function D3Graph(div) {
         //update graph display
         this.graphs.forEach(function(graph, i) {
 
-            if(this.themes[graph.parameter]['type'] === 'line') {
+            if(graph.phenomenon['type'] === 'line') {
                 this.chart.select(".line_" + i).attr("d", graph.chart.line);
                 this.appendSingleValues(graph, this.chart, i);
             }
 
-            else if(this.themes[graph.parameter]['type'] === 'bar')
+            else if(graph.phenomenon['type'] === 'bar')
                 this.appendBars(graph, this.chart, i);
 
-            else if(this.themes[graph.parameter]['type'] === 'area') {
+            else if(graph.phenomenon['type'] === 'area') {
                 this.chart.select(".area_" + i).attr("d", graph.chart.area);
             }
 
@@ -845,6 +855,7 @@ function D3Graph(div) {
         //reset timeframe
         this.visibleTimeframe = {start: this.chart.xScale.domain()[0], end: this.chart.xScale.domain()[1]};
 
+        //reset x-axis
         this.chart.select(".axis--x").call(this.chart.xAxis);
     };
 
@@ -858,27 +869,3 @@ function D3Graph(div) {
     };
 
 }
-
-/**
- * create parameter theme
- * @param name full parameter name
- * @param short short parameter name
- * @param uom unit of measurement
- * @param inverse flag: inverse y-axis
- * @param type diagram type
- * @param color1 color for first graph
- * @param color2 color for second graph
- * @param color3 color for third graph
- * @return {*} theme object
- */
-f_createTheme = function(name, short, uom, inverse, type, color1, color2, color3) {
-    return {
-        name: name,
-        short: short,
-        uom: uom,
-        inverse: inverse,
-        type: type,
-        color: [color1, color2, color3],
-        c_index: 0
-    }
-};
