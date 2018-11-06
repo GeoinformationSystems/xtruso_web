@@ -1,6 +1,6 @@
 //set host URL
-//var host = "https://extruso.bu.tu-dresden.de";
-var host = "http://localhost:63342/xtruso_web";
+var host = "https://extruso.bu.tu-dresden.de";
+//var host = "http://localhost:63342/xtruso_web";
 
 //disctionaries
 var dictionaries = {
@@ -33,6 +33,7 @@ var dictionaries = {
         OL_WMS_RadolanSF: "Radarniederschlag (24h Mittel)",
         OL_WMS_RadolanRX: "Radarreflektivität (5min Werte)",
         OL_WMS_RadolanFX: "Radarreflektivität (2h Vorhersage)",
+        OL_Processing_Results: "Prozessergebnisse",
         OL_Sensor_Vereint: "VEREINT Projekt",
         OL_Sensor_Student: "Studentenseminar",
         OL_Sensor_Gauge: "Hydrologische Messdaten",
@@ -121,6 +122,7 @@ var dictionaries = {
         OL_WMS_RadolanSF: "Radar precipitation (24h average)",
         OL_WMS_RadolanRX: "Radar reflectivity (5min values)",
         OL_WMS_RadolanFX: "Radar reflectivity (2h forecast)",
+        OL_Processing_Results: "Processing results",
         OL_Sensor_Vereint: "VEREINT project",
         OL_Sensor_Student: "Student seminar",
         OL_Sensor_Gauge: "Hydrological measurements",

@@ -13,7 +13,7 @@ var mxParent;
 var mxElements = {};
 
 //flag: edit classifications
-var editClassifications = true;
+var editClassifications = false;
 
 //pre-defined anchors for box connections
 var mxAnchors = {
@@ -446,8 +446,8 @@ function f_initPublications() {
             //sort based on year/title
             var articleArray = Object.values(articles);
             articleArray.sort(function(a, b) {
-                if(a[0].id.substring(0,4) > b[0].id.substring(0,4)) return false;
-                else return a[0].id.substring(4) > b[0].id.substring(4);
+                if(parseInt(a[0].attributes.year) > parseInt(b[0].attributes.year)) return false;
+                else return a[0].attributes.title > b[0].attributes.title;
             });
 
             //append articles to container
@@ -575,6 +575,8 @@ function f_createArticles() {
         //create article element for publication
         var article = $('<article>', {
             id: entry.id,
+            year: entry.year,
+            title: entry.title,
             'class': 'publication'
         }).append($('<h3>', {
             text: entry.title
