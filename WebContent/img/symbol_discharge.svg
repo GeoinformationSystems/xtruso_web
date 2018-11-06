@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generiert durch Microsoft Visio, SVG Export symbol_discharge.svg Zeichenblatt-1 -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
+		width="1.69729in" height="1.01102in" viewBox="0 0 122.205 72.7932" xml:space="preserve" color-interpolation-filters="sRGB"
+		class="st4">
+	<style type="text/css">
+	<![CDATA[
+		.st1 {fill:#004a82;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.24}
+		.st2 {fill:#004a82}
+		.st3 {stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.24}
+		.st4 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+	]]>
+	</style>
+
+	<g>
+		<title>Zeichenblatt-1</title>
+		<g id="group227-1" transform="translate(0.12,-38.1129)">
+			<title>Tabelle.227</title>
+			<g id="shape228-2" transform="translate(116.446,38.1129) rotate(90)">
+				<title>Kreisdiagrammbogen</title>
+				<path d="M17.27 67.7 L17.25 72.79 A17.3402 17.3402 -180 0 0 17.44 38.11 L17.41 43.2 A12.251 12.251 0 0 1 17.27 67.7
+							 Z" class="st1"/>
+			</g>
+			<g id="shape229-4" transform="translate(146.176,38.1129) rotate(90)">
+				<title>Kreisdiagrammbogen.168</title>
+				<path d="M17.41 67.7 L17.44 72.79 A17.3402 17.3402 -180 0 0 17.25 38.11 L17.27 43.2 A12.251 12.251 0 0 1 17.41 67.7
+							 Z" class="st1"/>
+			</g>
+			<g id="shape230-6" transform="translate(13.9652,-1.10468)">
+				<title>Tabelle.230</title>
+				<path d="M11.25 67.19 A12.251 12.251 0 0 1 5.09 56.49 L0 56.46 A17.3402 17.3402 -180 0 0 11.25 72.79 L11.25 67.19
+							 Z" class="st1"/>
+			</g>
+			<g id="shape231-8" transform="translate(29.7152,-2.84217E-014)">
+				<title>Tabelle.231</title>
+				<path d="M0 67.6 L0 72.72 A17.3402 17.3402 -180 0 0 18.93 55.36 L13.84 55.39 A12.251 12.251 0 0 1 -0 67.6 Z"
+						class="st1"/>
+			</g>
+			<g id="shape232-10" transform="translate(25.2152,-0.0730673)">
+				<title>Tabelle.232</title>
+				<path d="M4.5 67.67 A12.251 12.251 0 0 1 -0 66.16 L0 71.76 A17.3402 17.3402 -180 0 0 4.5 72.79 L4.5 67.67 Z"
+						class="st1"/>
+			</g>
+			<g id="shape233-12" transform="translate(103.035,-9.9476E-014)">
+				<title>Tabelle.233</title>
+				<path d="M18.93 67.6 A12.251 12.251 0 0 1 5.09 55.39 L0 55.36 A17.3402 17.3402 -180 0 0 18.93 72.72 L18.93 67.6 Z"
+						class="st1"/>
+			</g>
+			<g id="shape234-14" transform="translate(18.9304,-0.0883016) scale(-1,1)">
+				<title>Tabelle.234</title>
+				<path d="M18.93 67.6 A12.251 12.251 0 0 1 5.09 55.39 L0 55.36 A17.3402 17.3402 -180 0 0 18.93 72.72 L18.93 67.6 Z"
+						class="st1"/>
+			</g>
+		</g>
+		<g id="shape249-16" transform="translate(101.745,-0.12) scale(-1,1)">
+			<title>1D-Pfeil, Ende offen</title>
+			<path d="M83.25 50.12 L14.17 50.12 L14.17 44.45 L0 58.62 L14.17 72.79 L14.17 67.12 L83.25 67.12 L83.25 50.12 Z"
+					class="st2"/>
+			<path d="M83.25 50.12 L14.17 50.12 L14.17 44.45 L0 58.62 L14.17 72.79 L14.17 67.12 L83.25 67.12" class="st3"/>
+			<path d="" class="st3"/>
+			<path d="M83.25 50.12 L83.25 67.12" class="st3"/>
+		</g>
+	</g>
+</svg>

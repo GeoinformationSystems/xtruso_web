@@ -426,6 +426,7 @@ a {
 
 .sensor_latest {
     font-size: 0.5em;
+    margin-top: 33px;
 }
 
 .sensor_details {
@@ -445,6 +446,7 @@ a {
     height: 40px;
     width: 40px;
     background-size: 40px;
+    background-repeat: no-repeat;
     float: left;
     display: block;
     cursor: pointer;
@@ -458,42 +460,83 @@ a {
 }
 
 .sensor_sym_download {
-    background: url(../img/symbol_download.png) no-repeat;
+    background-image: url(../img/symbol_download.png);
 }
 
 .sensor_sym_graph {
-    background: url(../img/symbol_graph.png) no-repeat;
+    background-image: url(../img/symbol_graph.png);
 }
 
 .sensor_sym_graph_selected {
-    background: url(../img/symbol_graph_selected.png) no-repeat;
+    background-image: url(../img/symbol_graph_selected.png);
 }
 
 .sensor_sym_info {
-    background: url(../img/symbol_info.png) no-repeat;
+    background-image: url(../img/symbol_info.png);
 }
 
 .sensor_sym_process_vhs {
-    background: url(../img/symbol_process_vhs.png) no-repeat;
+    background-image: url(../img/symbol_process_vhs.png);
 }
 
 .sensor_sym_process_vhs_selected {
-    background: url(../img/symbol_process_vhs_selected.png) no-repeat;
+    background-image: url(../img/symbol_process_vhs_selected.png);
 }
 
 .sensor_sym_process_ezg {
-    background: url(../img/symbol_process_ezg.png) no-repeat;
+    background-image: url(../img/symbol_process_ezg.png);
 }
 
 .sensor_sym_process_ezg_selected {
-    background: url(../img/symbol_process_ezg_selected.png) no-repeat;
+    background-image: url(../img/symbol_process_ezg_selected.png);
 }
 
 .sensor_sym_process_rw {
-    background: url(../img/symbol_process_rw.png) no-repeat;
+    background-image: url(../img/symbol_process_rw.png);
 }
 
 .sensor_sym_process_rw_selected {
-    background: url(../img/symbol_process_rw_selected.png) no-repeat;
+    background-image: url(../img/symbol_process_rw_selected.png);
 }
 
+.sensor_sym_param {
+    background-size: auto 30px;
+    background-position: center 2px;
+    background-repeat: no-repeat;
+}
+
+.sensor_sym_param_rain {
+    background-image: url(../img/symbol_rain.svg);
+}
+
+.sensor_sym_param_globalrad {
+    background-image: url(../img/symbol_globalrad.svg);
+}
+
+.sensor_sym_param_temperature {
+    background-image: url(../img/symbol_temperature.svg);
+}
+
+.sensor_sym_param_cloudcover {
+    background-image: url(../img/symbol_cloudcover.svg);
+}
+
+.sensor_sym_param_humidity {
+    background-image: url(../img/symbol_humidity.svg);
+}
+
+.sensor_sym_param_pressure {
+    background-image: url(../img/symbol_pressure.svg);
+}
+
+.sensor_sym_param_level {
+    background-image: url(../img/symbol_level.svg);
+}
+
+.sensor_sym_param_discharge {
+    background-image: url(../img/symbol_discharge.svg);
+}
+
+.sensor_sym_param_wind {
+    background-image: url(../img/symbol_wind.svg);
+}

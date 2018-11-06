@@ -1,8 +1,8 @@
 //set host URL
-var host = "https://extruso.bu.tu-dresden.de";
-//var host = "http://localhost:63342/xtruso_web";
+//var host = "https://extruso.bu.tu-dresden.de";
+var host = "http://localhost:8080/xtruso_web";
 
-//disctionaries
+//dictionaries
 var dictionaries = {
     de: {
         text: "Deutsch",

@@ -71,7 +71,7 @@ var symbolSelected = [
     "sensor_sym_process_ezg",
     "sensor_sym_process_rw"
 ];
-//geoJSON formta for parsing and encoding GeoJSON
+//geoJSON format for parsing and encoding GeoJSON
 var geojson  = new ol.format.GeoJSON();
 
 //set OCPU target URL
@@ -159,18 +159,18 @@ var defaultHighlightStyle = f_createOLStyle(["point","line","area"], 1, pointSiz
 
 //sensor phenomena
 var phenomena = {
-    "default": f_initPhenomenon("NA", "NA", "NA", false, "line", colorPalette["blueGrey"]),
-    "precipitation":  f_initPhenomenon("precipitation", "P", "mm/h", true, "area", colorPalette["cyan"]),
-    "precipitation_sum": f_initPhenomenon("precipitation sum", "P sum", "1000m³/h", true, "area", colorPalette["cyan"]),
-    "relative humidity":  f_initPhenomenon("relative humidity", "H", "%", false, "line", colorPalette["teal"]),
-    "air temperature":  f_initPhenomenon("air temperature", "T", "°C", false, "line", colorPalette["pink"]),
-    "soil temperature":  f_initPhenomenon("soil temperature", "T", "°C", false, "line", colorPalette["brown"]),
-    "discharge": f_initPhenomenon("discharge", "Q", "m³/s", false, "line", colorPalette["deepPurple"]),
-    "discharge prediction": f_initPhenomenon("discharge forecast", "Q", "m³/s", false, "line", colorPalette["purple"]),
-    "water level": f_initPhenomenon("water level", "W", "cm", false, "line", colorPalette["lightBlue"]),
-    "global radiation": f_initPhenomenon("global radiation", "G", "W/m²", false, "line", colorPalette["orange"]),
-    "wind speed": f_initPhenomenon("wind speed", "V", "m/s", false, "line", colorPalette["lightGreen"]),
-    "atmospheric pressure": f_initPhenomenon("atmospheric pressure", "atm", "hPa", false, "line", colorPalette["lime"])
+    "default": f_initPhenomenon("NA", "NA", "NA", false, "line", colorPalette["blueGrey"], ""),
+    "precipitation":  f_initPhenomenon("precipitation", "P", "mm/h", true, "area", colorPalette["cyan"], "sensor_sym_param_rain"),
+    "precipitation_sum": f_initPhenomenon("precipitation sum", "P sum", "1000m³/h", true, "area", colorPalette["cyan"], "sensor_sym_param_rain"),
+    "relative humidity":  f_initPhenomenon("relative humidity", "H", "%", false, "line", colorPalette["teal"], "sensor_sym_param_humidity"),
+    "air temperature":  f_initPhenomenon("air temperature", "T", "°C", false, "line", colorPalette["pink"], "sensor_sym_param_temperature"),
+    "soil temperature":  f_initPhenomenon("soil temperature", "T", "°C", false, "line", colorPalette["brown"], "sensor_sym_param_temperature"),
+    "discharge": f_initPhenomenon("discharge", "Q", "m³/s", false, "line", colorPalette["deepPurple"], "sensor_sym_param_discharge"),
+    "discharge prediction": f_initPhenomenon("discharge forecast", "Q", "m³/s", false, "line", colorPalette["purple"], "sensor_sym_param_discharge"),
+    "water level": f_initPhenomenon("water level", "W", "cm", false, "line", colorPalette["lightBlue"], "sensor_sym_param_level"),
+    "global radiation": f_initPhenomenon("global radiation", "G", "W/m²", false, "line", colorPalette["orange"], "sensor_sym_param_globalrad"),
+    "wind speed": f_initPhenomenon("wind speed", "V", "m/s", false, "line", colorPalette["lightGreen"], "sensor_sym_param_wind"),
+    "atmospheric pressure": f_initPhenomenon("atmospheric pressure", "atm", "hPa", false, "line", colorPalette["lime"], "sensor_sym_param_pressure")
 };
 
 /**
@@ -181,9 +181,10 @@ var phenomena = {
  * @param inverse flag: inverse y-axis
  * @param type diagram type
  * @param colors color palette for graph
+ * @param symbolClass symbol class name
  * @return {*} theme object
  */
-function f_initPhenomenon(name, short, uom, inverse, type, colors) {
+function f_initPhenomenon(name, short, uom, inverse, type, colors, symbolClass) {
     return {
         name: name,
         short: short,
@@ -196,7 +197,8 @@ function f_initPhenomenon(name, short, uom, inverse, type, colors) {
             if(type === "line") return colors[10 - index * 2];
             else if(type === "area") return colors[6 + index * 2];
         },
-        c_index: 0 //used for D3 graph color enumeration
+        c_index: 0, //used for D3 graph color enumeration
+        symbol: symbolClass
     }
 }
 
@@ -1794,9 +1796,10 @@ function f_getSensorItem(sensor) {
         'class': 'sensor_div'
     }).append($('<div>', {
         id: f_escapeSelector(sensor["id"]),
-        'class': 'sensor_info',
-        title: "Sensor code: " + sensor["code"],
-        text: sensor["phenomenon"]["short"],
+        'class': 'lang_t sensor_info sensor_sym_param ' + sensor["phenomenon"]["symbol"],
+        'data-lang-t': 'OL_Phen_' + sensor["phenomenon"]["name"],
+        title: dictionaries[lang]['OL_Phen_' + sensor["phenomenon"]["name"]],
+        //text: sensor["phenomenon"]["short"],
         click: function(){
             //swap class
             $(this).toggleClass("sensor_info_selected");
@@ -1882,11 +1885,12 @@ function f_getSensorDetails(device, sensor) {
         }}).append($('<span>', {
             'class': 'property_name',
             text: "Sensor: "
-        }).css("margin-left", "0")).append($('<span>', {
+        }).css("margin-left", "0")
+        ).append($('<span>', {
             'class': 'property_value lang',
             'data-lang': 'OL_Phen_' + sensor["phenomenon"]["name"],
             text: dictionaries[lang]['OL_Phen_' + sensor["phenomenon"]["name"]]
-         })).append($('<br>'))
+        })).append($('<br>'))
     );
 
     //append download title

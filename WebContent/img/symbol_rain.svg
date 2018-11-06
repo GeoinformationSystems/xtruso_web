@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generiert durch Microsoft Visio, SVG Export rain.svg Zeichenblatt-1 -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
+		xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/" width="1.64028in" height="1.44579in"
+		viewBox="0 0 118.1 104.097" xml:space="preserve" color-interpolation-filters="sRGB" class="st2">
+	<v:documentProperties v:langID="1031" v:metric="true" v:viewMarkup="false"/>
+
+	<style type="text/css">
+	<![CDATA[
+		.st1 {fill:#004a82;stroke:none;stroke-linecap:butt;stroke-width:1}
+		.st2 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+	]]>
+	</style>
+
+	<g v:mID="0" v:index="1" v:groupContext="foregroundPage">
+		<title>Zeichenblatt-1</title>
+		<v:pageProperties v:drawingScale="1" v:pageScale="1" v:drawingUnits="19" v:shadowOffsetX="9" v:shadowOffsetY="-9"/>
+		<g id="shape3-1" v:mID="3" v:groupContext="shape" transform="translate(1,105.097) scale(1,-1)">
+			<title>path16</title>
+			<path d="M87.18 31.61 L76.73 2.83 L78.98 2 L89.76 31.61 L87.18 31.61 ZM75.21 31.61 L64.73 2.83 L66.97 2 L77.75 31.61
+						 L75.21 31.61 ZM63.24 31.61 L52.75 2.83 L55 2 L65.78 31.61 L63.24 31.61 ZM51.23 31.61 L40.74 2.83 L42.99
+						 2 L53.77 31.61 L51.23 31.61 ZM39.25 31.61 L28.77 2.83 L31.02 2 L41.8 31.61 L39.25 31.61 ZM27.25 31.61 L16.76
+						 2.83 L19.01 2 L29.82 31.61 L27.25 31.61 ZM59.57 104.1 C44.37 104.1 32.04 91.79 32.04 76.6 C32.04 76.25 32.13
+						 75.92 32.14 75.58 C31.8 75.6 31.47 75.69 31.13 75.69 C22.95 75.69 16.33 69.06 16.33 60.89 C16.33 60.78 16.36
+						 60.66 16.36 60.56 C15.19 60.91 13.98 61.18 12.7 61.18 C5.68 61.18 0 55.49 0 48.48 C0 41.46 5.68 38.79 12.7
+						 38.79 L52.61 38.79 L74.34 38.79 L94.33 38.79 C106.36 38.79 116.1 48.53 116.1 60.56 C116.1 72.59 106.36 82.33
+						 94.33 82.33 C91.61 82.33 89.03 81.78 86.64 80.88 C84.56 94.02 73.29 104.1 59.57 104.1 Z" class="st1"/>
+		</g>
+	</g>
+</svg>
