@@ -260,7 +260,7 @@
             if(input.type === 'checkbox') {
                 var style = f_getOverlayStyleById(input.id, false, false);
                 var color = input.checked ? f_getStrokeColor(style) : f_getFillColor(style);
-                label.style.borderLeft = "15px solid " + (color !== null ? color : (input.checked ? "#EEEEEE" : "#888888"));
+                label.style.borderLeft = "15px solid " + (color !== null ? color : (input.checked ? "#333333" : "#DDDDDD"));
             }
 
             legendDiv.appendChild(label);

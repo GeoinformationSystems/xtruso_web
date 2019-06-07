@@ -392,12 +392,12 @@ a {
 
 .ui-slider {
     width:150px;
-    margin: 4px 0;
-    height: .3em !important;
+    margin: 2px 0;
+    height: 2px !important;
 }
 
 .ui-slider .ui-slider-handle {
-    height: .8em !important;
+    height: 8px !important;
 }
 
 .sensor_div {
@@ -406,14 +406,13 @@ a {
 }
 
 .sensor_info {
-    width:50px;
-    height:50px;
-    font-size:1.5em;
-    text-align:center;
-    display:block;
+    width: 50px;
+    height: 50px;
+    display: block;
     cursor: pointer;
     border: 2px solid white;
     color: #003C88;
+    text-align: center;
 }
 
 .sensor_info:hover {
@@ -425,8 +424,8 @@ a {
 }
 
 .sensor_latest {
-    font-size: 0.5em;
-    margin-top: 33px;
+    font-size: 0.7em;
+    margin-top: 35px;
 }
 
 .sensor_details {
@@ -497,6 +496,14 @@ a {
 
 .sensor_sym_process_rw_selected {
     background-image: url(../img/symbol_process_rw_selected.png);
+}
+
+.sensor_sym_process_bf {
+    background-image: url(../img/symbol_process_bf.png);
+}
+
+.sensor_sym_process_bf_selected {
+    background-image: url(../img/symbol_process_bf_selected.png);
 }
 
 .sensor_sym_param {

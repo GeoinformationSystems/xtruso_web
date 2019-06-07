@@ -2,59 +2,43 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generiert durch Microsoft Visio, SVG Export symbol_pressure.svg Zeichenblatt-1 -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
-		width="1.17026in" height="1.06593in" viewBox="0 0 84.2587 76.7469" xml:space="preserve" color-interpolation-filters="sRGB"
-		class="st2">
+		width="1.26042in" height="1.26042in" viewBox="0 0 90.75 90.75" xml:space="preserve" color-interpolation-filters="sRGB"
+		class="st3">
 	<style type="text/css">
 	<![CDATA[
 		.st1 {fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
-		.st2 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+		.st2 {fill:#004a82;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
+		.st3 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
 	</style>
 
 	<g>
 		<title>Zeichenblatt-1</title>
-		<g id="shape94-1" transform="translate(0.375,-0.375)">
-			<title>Tabelle.94</title>
-			<rect x="0" y="0.750002" width="83.5087" height="75.9969" class="st1"/>
-			<!-- Unsupported Record: EmfPlusRecordTypeSetPixelOffsetMode  -->
-			<svg viewBox="0 0 167.02 152.03" clip="rect(0 0 0 0)" height="75.9969" overflow="hidden" preserveAspectRatio="none"
-					width="83.5087" x="0" y="0.750002">
-				<!-- GetDC -->
-				<mask id="mfid1" fill-rule="evenodd" fill="white" stroke="none">
-					<rect x="-4.1943e+006" y="-4.1943e+006" width="8.3886e+006" height="8.3886e+006"/>
-				</mask>
-				<!-- Released DC -->
-				<defs>
-					<path id="mfid2"
-							d="M0.35938,-0.058822 L0.35938,0 C0.55785,-0.000000000000017208 0.71875,-0.1609 0.71875,-0.35938 C0.71875,-0.55785 0.55785,-0.71875 0.35938,-0.71875 L0.35938,-0.65993 C0.52537,-0.65993 0.65993,-0.52537 0.65993,-0.35938 C0.65993,-0.19338 0.52537,-0.058822 0.35938,-0.058822 Z"/>
-				</defs>
-				<g>
-					<g transform="matrix(0, -144, 144, 0, 136.13, 137.26)">
-						<g fill="#004a82">
-							<use xlink:href="#mfid2" fill-rule="evenodd" stroke="none"/>
-							<defs>
-								<path id="mfid3"
-										d="M0.016142,-0.29209 C0.0093397,-0.28793 0.0045587,-0.28219 0.002018,-0.27539 C-0.0011392,-0.26691 -0.00074297,-0.25712 0.0042817,-0.24842 L0.10365,-0.076316 C0.096794,-0.060245 0.097685,-0.042337 0.10632,-0.027263 C0.11778,-0.0073033 0.13957,0.002334 0.16073,-0.00048013 C0.16759,-0.0013959 0.17436,-0.0034036 0.18072,-0.0070304 C0.18643,-0.010279 0.19134,-0.014502 0.19528,-0.019236 C0.20955,-0.03626 0.21204,-0.061064 0.20109,-0.080786 C0.19249,-0.096241 0.1772,-0.10637 0.15942,-0.10852 L0.059334,-0.28187 C0.054029,-0.29106 0.044902,-0.29605 0.035124,-0.29664 C0.028827,-0.29702 0.022328,-0.29546 0.016318,-0.29219 L0.016142,-0.29209 Z"/>
-							</defs>
-						</g>
-					</g>
-					<g transform="matrix(139.09, -37.27, 37.27, 139.09, 67.927, 100.65)">
-						<g fill="#004a82">
-							<use xlink:href="#mfid3" fill-rule="evenodd" stroke="none"/>
-							<defs>
-								<path id="mfid4"
-										d="M0.18924,-0.30356 L0.10309,-0.24326 C0.28372,0.014778 0.63933,0.077532 0.89737,-0.10309 C1.1554,-0.28372 1.2182,-0.63933 1.0375,-0.89737 C0.8569,-1.1554 0.5013,-1.2182 0.24326,-1.0375 C0.19472,-1.0035 0.15176,-0.96221 0.11595,-0.915 L0.19973,-0.85145 C0.35499,-1.0561 0.64678,-1.0962 0.85145,-0.9409 C1.0561,-0.78563 1.0962,-0.49385 0.9409,-0.28918 C0.78563,-0.08451 0.49385,-0.044461 0.28918,-0.19973 C0.25067,-0.22894 0.21696,-0.26397 0.18924,-0.30356 Z"/>
-							</defs>
-						</g>
-					</g>
-					<g transform="matrix(0, -144, 144, 0, 166.51, 166.51)">
-						<g fill="#004a82">
-							<use xlink:href="#mfid4" fill-rule="evenodd" stroke="none"/>
-						</g>
-					</g>
-				</g>
-			</svg>
-			<rect x="0" y="0.750002" width="83.5087" height="75.9969" class="st1"/>
+		<g id="shape305-1" transform="translate(0.375,-0.375)">
+			<title>Tabelle.305</title>
+			<rect x="0" y="0.75" width="90" height="90" class="st1"/>
+		</g>
+		<g id="group310-3" transform="translate(6.75,-11.2506)">
+			<title>Tabelle.310</title>
+			<g id="shape106-4" transform="translate(14.2975,-31.0926)">
+				<title>Tabelle.106</title>
+				<path d="M44.68 90.75 L48.68 90.75 C48.68 77.29 37.77 66.42 24.34 66.42 C10.88 66.42 -0 77.29 0 90.75 L3.97 90.75
+							 C3.97 79.49 13.08 70.38 24.34 70.38 C35.57 70.38 44.68 79.49 44.68 90.75 Z" class="st2"/>
+			</g>
+			<g id="shape107-6" transform="translate(26.1912,-26.5563)">
+				<title>Tabelle.107</title>
+				<path d="M0.63 73.93 C0.25 74.34 0.04 74.78 0.01 75.28 C-0.05 75.9 0.13 76.52 0.63 76.99 L10.12 86.51 C9.98 87.68
+							 10.33 88.83 11.18 89.68 C12.27 90.77 13.86 91.03 15.21 90.47 C15.62 90.3 16.03 90.03 16.38 89.68 C16.71
+							 89.39 16.94 89.03 17.12 88.65 C17.76 87.27 17.5 85.63 16.44 84.51 C15.59 83.66 14.41 83.27 13.21 83.42
+							 L3.63 73.84 C3.13 73.34 2.45 73.17 1.8 73.31 C1.36 73.4 0.98 73.61 0.63 73.93 Z" class="st2"/>
+			</g>
+			<g id="shape108-8">
+				<title>Tabelle.108</title>
+				<path d="M56.68 84.93 L60.77 90.75 C78.26 78.52 82.49 54.46 70.26 36.97 C58.04 19.51 33.96 15.25 16.47 27.48 C-0.99
+							 39.7 -5.25 63.8 6.98 81.26 C9.27 84.55 12.09 87.46 15.27 89.87 L19.59 84.2 C5.71 73.7 3.01 53.93 13.53
+							 40.08 C24.03 26.21 43.81 23.51 57.65 34.03 C71.53 44.52 74.23 64.3 63.71 78.14 C61.74 80.76 59.36 83.05
+							 56.68 84.93 Z" class="st2"/>
+			</g>
 		</g>
 	</g>
 </svg>

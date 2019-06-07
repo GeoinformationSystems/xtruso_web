@@ -46,7 +46,7 @@ var d3Graph = new D3Graph("container_graph");
 //initial view
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
-var zoom = 10;
+var zoom = 16 //10;
 var minZoom = 8;
 var pointSize = 8;
 var clusterDistance = 40;
@@ -57,6 +57,8 @@ var sensorHubMeasurements = {};
 var sensorHubLatest = {};
 //array with radolan timeseries
 var radolanTimeseries = {};
+//array with BROOK90 timeseries
+var brook90Timeseries = {};
 //array with station forecasts
 var stationForecasts = {};
 var forecastDevices = ["550490","567221","550560","552210","583190","568350","568400","568160","554260","554210",
@@ -170,7 +172,19 @@ var phenomena = {
     "water level": f_initPhenomenon("water level", "W", "cm", false, "line", colorPalette["lightBlue"], "sensor_sym_param_level"),
     "global radiation": f_initPhenomenon("global radiation", "G", "W/m²", false, "line", colorPalette["orange"], "sensor_sym_param_globalrad"),
     "wind speed": f_initPhenomenon("wind speed", "V", "m/s", false, "line", colorPalette["lightGreen"], "sensor_sym_param_wind"),
-    "atmospheric pressure": f_initPhenomenon("atmospheric pressure", "atm", "hPa", false, "line", colorPalette["lime"], "sensor_sym_param_pressure")
+    "atmospheric pressure": f_initPhenomenon("atmospheric pressure", "atm", "hPa", false, "line", colorPalette["lime"], "sensor_sym_param_pressure"),
+    "soil moisture":  f_initPhenomenon("soil moisture", "SWC", "mm", false, "line", colorPalette["indigo"], "sensor_sym_param_soilmoist")
+};
+
+//OCPU keys for getMap request
+var ocpuKeys = {
+	"layers": "p.layer",
+	"format": "p.format",
+	"time": "p.timestamp",
+	"width": "p.width",
+	"height": "p.height",
+	"bbox": "p.bbox",
+	"srs": "p.srs"
 };
 
 /**
@@ -281,21 +295,134 @@ function f_initWMSLayer(baseUrl, layer, title, visible, opacity, type, timeEnabl
         zIndex: zIndex,
         source: new ol.source.ImageWMS({
             url: baseUrl,
-            params: {'FORMAT': 'image/png', 'VERSION': '1.1.0', 'STYLES': '', 'LAYERS': layer},
+            params: {
+            	'FORMAT': 'image/png', 
+            	'VERSION': '1.1.0', 
+            	'STYLES': '', 
+            	'LAYERS': layer
+            },
             attributions: attribution
         })
     });
     //set layer id
     wmsLayer.id = f_escapeSelector(baseUrl + ":" + layer);
     wmsLayer.name = layer;
+    wmsLayer.title = title;
     //add layer to corresponding collection
     if (type === 'base')
         baseLayers[wmsLayer.id] = wmsLayer;
     else
         imageOverlays[wmsLayer.id] = wmsLayer;
     //get capabilities document
-    f_getCapabilities(baseUrl, wmsLayer.id, layer, wmsLayer, timeEnabled);
+    f_getCapabilities(baseUrl, wmsLayer, timeEnabled);
 }
+
+/**
+ * initialize a raster layer with OCPU proxy
+ * @param baseUrl OCPU base url
+ * @param ocpuFunction OCPU function to call
+ * @param ocpuParams OCPU parameters
+ * @param ocpuTime OCPU time parameter
+ * @param layer layer name
+ * @param title layer display title
+ * @param visible flag: initial visibility
+ * @param opacity display opacity for this layer
+ * @param attribution OpenLayers attribution
+ * @param zIndex initial z index
+ */
+function f_initOCPULayer(baseUrl, layer, title, visible, opacity, attribution, zIndex, legendUrl) {
+    //initialize ol OCPU layer
+    var ocpuLayer = new ol.layer.Image({
+        title: title,
+        visible: visible,
+        opacity: opacity,
+        zIndex: zIndex,
+        source: new ol.source.ImageWMS ({
+			url: baseUrl,
+			crossOrigin: "anonymous",
+			params: {
+            	'FORMAT': 'image/png', 
+            	'VERSION': '1.1.0',
+            	'LAYERS': layer
+            },
+	        attributions: attribution,
+	        imageLoadFunction: function (image, src) {
+	        	//get OCPU parameters for getMap
+	        	ocpuParams = f_getOCPUParams(src)
+	        	//request image from OCPU
+	        	var req = ocpu.call("x.app.radolan.getMap", ocpuParams, function(session) {
+	        		session.getObject(function(result){
+			            var timestamp = result[0]['timestamp'];
+			            var map = "https://extruso.bu.tu-dresden.de/ocputmp/" + session.getKey() + "/files/" + result[0]['file'];
+			            image.getImage().src = map
+	        		});
+			    }).fail(function () {
+			        console.log("Error: " + req.responseText);
+			    });
+	        }        	        
+		})
+    });
+    //set id and name
+    ocpuLayer.id = f_escapeSelector(baseUrl + ":" + layer);
+    ocpuLayer.name = layer;
+    ocpuLayer.title = title;
+    //set legend URL
+    f_setLegend(ocpuLayer, legendUrl)
+    //init time selector
+    f_setOCPUTimestamps(ocpuLayer)
+    //set layer id
+    imageOverlays[ocpuLayer.id] = ocpuLayer;
+    //change visibility of time selection and legend
+    ocpuLayer.on('change:visible', function () {
+        //set visibility for time selection
+        if (this.getVisible()) {
+            $(timeSelection[ocpuLayer.id].div_selector).removeClass('hidden');
+            if(legends[ocpuLayer.id] !== undefined) legends[ocpuLayer.id].removeClass('hidden');
+        }
+        else {
+            $(timeSelection[ocpuLayer.id].div_selector).addClass('hidden');
+            if(legends[ocpuLayer.id] !== undefined) legends[ocpuLayer.id].addClass('hidden');
+        }
+    });
+}
+
+
+/**
+ * fet all timestamps supported by an OCPU layer
+ * @returns supported timestamps (formatted similar to WMS capabilities)
+ */
+function f_setOCPUTimestamps(ocpuLayer) {
+	var req = ocpu.call("x.app.radolan.timestamps", {"radolan.type": ocpuLayer.name, "iso": true, "latest": false}, function(session) {
+		session.getObject(function(result){
+			//set dimension (compliant with WMS layer capabilities)
+			ocpuLayer.capabilities = {};
+			ocpuLayer.capabilities.Dimension = [{"name": "time", "values": result, "default": result[result.length-1] }]
+			//initialize time dimension
+			f_initTimeDimesion(ocpuLayer);
+		});
+    }).fail(function () {
+        console.log("Error: " + req.responseText);
+    });
+}
+
+
+/**
+ * get OCPU getMap parameters from WMS request
+ * @param src WMS getMap request
+ * @returns ocpu parameter array
+ */
+function f_getOCPUParams(src) {
+	ocpuParam = {};
+	paramArray = src.split("&");
+	paramArray.forEach(function(param){
+		kv = param.split("=");
+		if(kv[0].toLowerCase() in ocpuKeys)
+			ocpuParam[ocpuKeys[kv[0].toLowerCase()]] = kv[1]
+	});
+	ocpuParam["t.format"] = "%Y-%m-%dT%H:%M:%OSZ";
+	return ocpuParam;
+}
+
 
 /**
  * set WMS legend
@@ -303,20 +430,20 @@ function f_initWMSLayer(baseUrl, layer, title, visible, opacity, type, timeEnabl
  * @param layer WMS layer name
  * @param legendUrl URL of legend
  */
-function f_setLegend(layerId, layer, legendUrl) {
+function f_setLegend(layer, legendUrl) {
     if(legendUrl === null)
         return;
     //add legend to jq_legendDiv
-    var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer + '" src="' + legendUrl + '" alt="Legend for ' + layer + '" />');
-    legends[layerId] = legend;
+    var legend = $('<span class="legend_bottom"></span><img class="legend hidden" title="Legend for ' + layer.title + '" src="' + legendUrl + '" alt="Legend for ' + layer.title + '" />');
+    legends[layer.id] = legend;
     jq_legendDiv.append(legend);
 }
 
 function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution, zIndex, maxResolution, style) {
     //set layer id
-    var layerId = f_escapeSelector(baseUrl + ":" + layer);
+    var id = f_escapeSelector(baseUrl + ":" + layer);
     //add style
-    f_setOverlayStyles(layerId, style);
+    f_setOverlayStyles(id, style);
     //init URL
     var wfsUrl = (baseUrl.endsWith('?') ? baseUrl : baseUrl + "?") +
         "service=WFS" +
@@ -341,7 +468,7 @@ function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution
                     var features = wfsSource.getFormat().readFeatures(xhr.responseText);
                     features.forEach(function(feature){
                         feature.set("layer", title);
-                        feature.set("layerId", layerId);
+                        feature.set("layerId", id);
                     });
                     wfsSource.addFeatures(features);
                 } else {
@@ -364,9 +491,9 @@ function f_initWFSJSONLayer(baseUrl, layer, title, visible, opacity, attribution
         source: wfsSource,
         style: style
     });
-    vectorLayer.id = layerId;
+    vectorLayer.id = id;
     vectorLayer.name = layer;
-    vectorOverlays[layerId] = vectorLayer;
+    vectorOverlays[id] = vectorLayer;
 }
 
 function f_initFeatureLayer(id, title, visible, opacity, zIndex, style) {
@@ -403,6 +530,12 @@ function f_getSensorHubQuery(phenomenon, network, extent){
     var terms = [];
     if(network !== null) terms.push({terms: {"networkCode": Array.isArray(network) ? network : [network]}});
     if(phenomenon !== null) terms.push({terms: {"phenomenon": Array.isArray(phenomenon) ? phenomenon : [phenomenon]}});
+    
+    //set extent, if defined as Infinite or +-90/180
+    if(extent[0] === -Infinity || extent[0] === -180) extent[0] = 11;
+    if(extent[1] === -Infinity || extent[1] === -90) extent[1] = 49;
+    if(extent[2] === Infinity || extent[2] === 180) extent[2] = 16;
+    if(extent[3] === Infinity || extent[3] === 90) extent[3] = 52;
 
     return {
         "size" : 10000,
@@ -447,7 +580,8 @@ function f_initSensorHubLayer(url, searchAPI, phenomenon, network, title, visibl
         format: geojson,
         loader: deviceLoader,
         zIndex: 100,
-        strategy: ol.loadingstrategy.bbox,
+        //strategy: ol.loadingstrategy.bbox,
+        strategy: ol.loadingstrategy.all, //required to search for closest measurement station when zoomed in
         attributions: attribution
     });
     sensorOverlaySources[id] = deviceSource;
@@ -767,12 +901,10 @@ function f_addSensorToDeviceLayer(deviceLayer, url, network, device, geometry, s
 /**
  * get WMS layer capabilities
  * @param url capabilities url
- * @param layerId layer id
- * @param layer WMS layer
- * @param wmsLayer ol layer object
+ * @param layer ol layer object
  * @param timeEnabled flag: layer has time dimension
  */
-function f_getCapabilities(url, layerId, layer, wmsLayer, timeEnabled) {
+function f_getCapabilities(url, layer, timeEnabled) {
 	
 	//change url, if a proxy is defined
 	if(proxies[url] !== undefined)
@@ -781,9 +913,9 @@ function f_getCapabilities(url, layerId, layer, wmsLayer, timeEnabled) {
     //get already registered capabilities
     if(capabilitiesDocument[url] !== undefined) {
         if(capabilitiesDocument[url] !== null)
-            f_initCapabilities(capabilitiesDocument[url], layerId, layer, wmsLayer, timeEnabled);
+            f_initCapabilities(capabilitiesDocument[url], layer, timeEnabled);
         else
-            setTimeout(f_getCapabilities.bind(null, url, layerId, layer, wmsLayer, timeEnabled), 250);
+            setTimeout(f_getCapabilities.bind(null, url, layer, timeEnabled), 250);
     }
 
     //read capabilities document from URL
@@ -794,33 +926,33 @@ function f_getCapabilities(url, layerId, layer, wmsLayer, timeEnabled) {
         var request = url + '?service=wms&request=getCapabilities';
         $.get(request).done(function(data) {
             capabilitiesDocument[url] = parser.read(data);
-            f_initCapabilities(capabilitiesDocument[url], layerId, layer, wmsLayer, timeEnabled);
+            f_initCapabilities(capabilitiesDocument[url], layer, timeEnabled);
         });
 
     }
 
 }
 
-function f_initCapabilities(capabilitiesDoc, layerId, layer, wmsLayer, timeEnabled) {
+function f_initCapabilities(capabilitiesDoc, layer, timeEnabled) {
     var wmsTopLayer = capabilitiesDoc.Capability.Layer;
-    var wmsLayerCapabilities = f_getLayerByName(wmsTopLayer.Layer, layer);
-    if (wmsLayerCapabilities === null)
+    var wmsLayerDoc = f_getLayerByName(wmsTopLayer.Layer, layer.name);
+    if (wmsLayerDoc === null)
         return;
     //get dimension
-    capabilities[layerId] = wmsLayerCapabilities;
+    layer.capabilities = wmsLayerDoc;
     if (timeEnabled) {
-        f_initTimeDimesion(wmsLayerCapabilities, layerId, layer);
+        f_initTimeDimesion(layer);
         //change visibility of time selection
-        wmsLayer.on('change:visible', function () {
+        layer.on('change:visible', function () {
             //set visibility for time selection
             if (this.getVisible())
-                $(timeSelection[layerId].div_selector).removeClass('hidden');
+                $(timeSelection[layer.id].div_selector).removeClass('hidden');
             else
-                $(timeSelection[layerId].div_selector).addClass('hidden');
+                $(timeSelection[layer.id].div_selector).addClass('hidden');
         });
     }
     //get legend and set attribution
-    var legendUrl = f_getLegendUrlFromCapabilities(wmsLayerCapabilities);
+    var legendUrl = f_getLegendUrlFromCapabilities(layer.capabilities);
 	//set proxy, if defined
     for(var proxy in proxies) {
         if (legendUrl.startsWith(proxy)){
@@ -831,18 +963,18 @@ function f_initCapabilities(capabilitiesDoc, layerId, layer, wmsLayer, timeEnabl
     //only add legend, if URL is valid
     f_urlExists(legendUrl, function(exists){
         if(exists)
-            f_setLegend(layerId, layer, legendUrl);
+            f_setLegend(layer, legendUrl);
     });
     //change visibility of legend
-    wmsLayer.on('change:visible', function () {
+    layer.on('change:visible', function () {
         //return if legend is not set
-        if(legends[layerId] === undefined)
+        if(legends[layer.id] === undefined)
             return;
         //set visibility for time selection
         if (this.getVisible())
-            legends[layerId].removeClass('hidden');
+            legends[layer.id].removeClass('hidden');
         else
-            legends[layerId].addClass('hidden');
+            legends[layer.id].addClass('hidden');
     });
 }
 
@@ -870,10 +1002,10 @@ function f_urlExists(url, callback){
  * @param wmsLayerCapabilities layer capabilities
  * @returns layer legend url
  */
-function f_getLegendUrlFromCapabilities(wmsLayerCapabilities) {
-    if (wmsLayerCapabilities === null || !("Style" in wmsLayerCapabilities))
+function f_getLegendUrlFromCapabilities(wmsLayerDoc) {
+    if (wmsLayerDoc === null || !("Style" in wmsLayerDoc))
         return null;
-    return f_getLegendUrlFromStyles(wmsLayerCapabilities.Style);
+    return f_getLegendUrlFromStyles(wmsLayerDoc.Style);
 }
 
 /**
@@ -913,25 +1045,23 @@ function f_getLegendUrlFromLegend(legendURL) {
 }
 
 /**
- * initialize time dimension for WMS layer
- * @param wmsLayerCapabilities WMS layer capabilities
- * @param layerId layer id
- * @param layer WMS layer name
+ * initialize time dimension for layer
+ * @param layer layer with capabilities
  */
-function f_initTimeDimesion(wmsLayerCapabilities, layerId, layer) {
+function f_initTimeDimesion(layer) {
     //init selector object
-    f_initTimeSelector(layerId, layer);
+    f_initTimeSelector(layer);
     //append selection divs for display
-    f_displayTimeSelection(layerId, layer);
+    f_displayTimeSelection(layer);
     //get dimension
-    var dimension = f_getDimension(wmsLayerCapabilities, "time")
+    var dimension = f_getDimension(layer, "time")
     if (dimension === null)
         return;
     var defaultValue = new Date(dimension.default);
     //parse date values
-    timeValues[layerId] = f_getDateArray(dimension.values, ",");
+    timeValues[layer.id] = f_getDateArray(dimension.values, ",");
     //parse date values
-    f_initTimeSelection(layerId, defaultValue);
+    f_initTimeSelection(layer, defaultValue);
 }
 
 /**
@@ -940,150 +1070,147 @@ function f_initTimeDimesion(wmsLayerCapabilities, layerId, layer) {
  * @param layer target layer name
  * @returns WMS layer capabilites or null, if no matching layer was found
  */
-function f_getLayerByName(wmsLayers, layer) {
-    var numberOfLayers = wmsLayers.length;
+function f_getLayerByName(wmsLayersDoc, name) {
+    var numberOfLayers = wmsLayersDoc.length;
     for (var i = 0; i < numberOfLayers; i++) {
-        if (wmsLayers[i].Name === layer)
-            return wmsLayers[i];
-        else if (wmsLayers[i].Layer !== undefined) {
-            var wmsLayer = f_getLayerByName(wmsLayers[i].Layer, layer);
-            if (wmsLayer !== null)
-                return wmsLayer;
+        if (wmsLayersDoc[i].Name === name)
+            return wmsLayersDoc[i];
+        else if (wmsLayersDoc[i].Layer !== undefined) {
+            var wmsLayerDoc = f_getLayerByName(wmsLayersDoc[i].Layer, name);
+            if (wmsLayerDoc !== null)
+                return wmsLayerDoc;
         }
     }
     return null;
 }
 
 /**
- * get dimension from WMS layer capabilities
- * @param wmsLayer WMS layer capabilities
- * @param name dimension name
+ * get dimension from layer capabilities
+ * @param layer layer object with capabilities
  * @returns time dimension
  */
-function f_getDimension(wmsLayer, name) {
-    if (wmsLayer.Dimension === null)
+function f_getDimension(layer, name) {
+	var capabilities = layer.capabilities;
+    if (capabilities === undefined || capabilities.Dimension === null)
         return null;
-    var numberOfDimensions = wmsLayer.Dimension.length;
+    var numberOfDimensions = capabilities.Dimension.length;
     for (var i = 0; i < numberOfDimensions; i++) {
-        if (wmsLayer.Dimension[i].name === name)
-            return wmsLayer.Dimension[i];
+        if (capabilities.Dimension[i].name === name)
+            return capabilities.Dimension[i];
     }
 }
 
 /**
  * initialize time selection display
- * @param layerId layer id
- * @param layer layer name
+ * @param layer layer object
  */
-function f_displayTimeSelection(layerId, layer) {
-    $('#container_time').append('<div id="time_' + layer + '" class="container_time_layer hidden">' +
+function f_displayTimeSelection(layer) {
+    $('#container_time').append('<div id="time_' + layer.id + '" class="container_time_layer hidden">' +
         '   <div class="time_section time_steps">' +
-        '       <div class="time_title">Time selection for <b>' + layer + '</b></div>\n' +
-        '       <a href="#" class="time_step" title="previous" onclick="f_timeStep(\'' + layerId + '\', -1)">&#x23f4;</a>' +
-        '       <a href="#" class="time_step" title="first" onclick="f_timeStep(\'' + layerId + '\', -2)">&#x23ee;</a>' +
+        '       <div class="time_title">Timestamp for <b>' + layer.title + '</b></div>\n' +
+        '       <a href="#" class="time_step" title="previous" onclick="f_timeStep(\'' + layer.id + '\', -1)">&#x23f4;</a>' +
+        '       <a href="#" class="time_step" title="first" onclick="f_timeStep(\'' + layer.id + '\', -2)">&#x23ee;</a>' +
         '   </div>' +
         '   <div class="time_section" title="Hours">\n' +
         '       <div class="time_label">H</div>\n' +
-        '       <div id="' + timeSelection[layerId].selection[3].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layer.id].selection[3].div_name + '"></div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Minutes">\n' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layerId].selection[4].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layer.id].selection[4].div_name + '"></div>\n' +
         '       <div class="time_label">M</div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Day">\n' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layerId].selection[2].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layer.id].selection[2].div_name + '"></div>\n' +
         '       <div class="time_label">D</div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Month">\n' +
         '       <div class="time_label">M</div>\n' +
-        '       <div id="' + timeSelection[layerId].selection[1].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layer.id].selection[1].div_name + '"></div>\n' +
         '   </div>\n' +
         '   <div class="time_section" title="Year">\n' +
         '       <div class="time_label_adjust" >&nbsp;</div>\n' +
-        '       <div id="' + timeSelection[layerId].selection[0].div_name + '"></div>\n' +
+        '       <div id="' + timeSelection[layer.id].selection[0].div_name + '"></div>\n' +
         '       <div class="time_label">Y</div>\n' +
         '   </div>\n' +
         '   <div class="time_section time_steps">' +
         '       <div class="time_label_adjust">&nbsp;</div>\n' +
-        '       <a href="#" class="time_step" title="last" onclick="f_timeStep(\'' + layerId + '\', 2)">&#x23ed;</a>' +
-        '       <a href="#" class="time_step" title="next" onclick="f_timeStep(\'' + layerId + '\', 1)">&#x23f5;</a>' +
+        '       <a href="#" class="time_step" title="last" onclick="f_timeStep(\'' + layer.id + '\', 2)">&#x23ed;</a>' +
+        '       <a href="#" class="time_step" title="next" onclick="f_timeStep(\'' + layer.id + '\', 1)">&#x23f5;</a>' +
         '   </div>' +
         '</div>');
 }
 
 /**
  * initialize time selector object for layer
- * @param layerId layer id
- * @param layer layer name
+ * @param layer layer object
  */
-function f_initTimeSelector(layerId, layer) {
-    var escapedLayer = f_jQueryEscape(layer);
-    timeSelection[layerId] = {};
-    timeSelection[layerId].div_name = layer;
-    timeSelection[layerId].div_selector = '#time_' + escapedLayer;
-    timeSelection[layerId].selection = [];
-    timeSelection[layerId].selection[0] = {
+function f_initTimeSelector(layer) {
+    timeSelection[layer.id] = {};
+    timeSelection[layer.id].div_name = layer;
+    timeSelection[layer.id].div_selector = '#time_' + layer.id;
+    timeSelection[layer.id].selection = [];
+    timeSelection[layer.id].selection[0] = {
         'title': 'year',
-        'div_name': layer + '_year',
-        'div_selector': '#' + escapedLayer + '_year',
+        'div_name': layer.id + '_year',
+        'div_selector': '#' + layer.id + '_year',
         'timeFunction': 'getFullYear',
         'values': [],
         'selected': null
     };
-    timeSelection[layerId].selection[1] = {
+    timeSelection[layer.id].selection[1] = {
         'title': 'month',
-        'div_name': layer + '_month',
-        'div_selector': '#' + escapedLayer + '_month',
+        'div_name': layer.id + '_month',
+        'div_selector': '#' + layer.id + '_month',
         'timeFunction': 'getMonth',
         'values': [],
         'selected': null
     };
-    timeSelection[layerId].selection[2] = {
+    timeSelection[layer.id].selection[2] = {
         'title': 'date',
-        'div_name': layer + '_date',
-        'div_selector': '#' + escapedLayer + '_date',
+        'div_name': layer.id + '_date',
+        'div_selector': '#' + layer.id + '_date',
         'timeFunction': 'getDate',
         'values': [],
         'selected': null
     };
-    timeSelection[layerId].selection[3] = {
+    timeSelection[layer.id].selection[3] = {
         'title': 'hours',
-        'div_name': layer + '_hours',
-        'div_selector': '#' + escapedLayer + '_hours',
+        'div_name': layer.id + '_hours',
+        'div_selector': '#' + layer.id + '_hours',
         'timeFunction': 'getHours',
         'values': [],
         'selected': null
     };
-    timeSelection[layerId].selection[4] = {
+    timeSelection[layer.id].selection[4] = {
         'title': 'minutes',
-        'div_name': layer + '_minutes',
-        'div_selector': '#' + escapedLayer + '_minutes',
+        'div_name': layer.id + '_minutes',
+        'div_selector': '#' + layer.id + '_minutes',
         'timeFunction': 'getMinutes',
         'values': [],
         'selected': null
     };
-    timeSelection[layerId].filteredValues = [];
-    timeSelection[layerId].isComplete = function () {
-        return timeSelection[layerId].filteredValues.length === 1;
+    timeSelection[layer.id].filteredValues = [];
+    timeSelection[layer.id].isComplete = function () {
+        return timeSelection[layer.id].filteredValues.length === 1;
     };
 }
 
 /**
  * set time selection for particular layer and index
- * @param layerId layer id
+ * @param layer layer object
  * @param index dimension index (0 = year, 1 = month, 2 = day, 3 = hours, 4 = minutes)
  * @param value value to be selected
  */
-function f_setTimeSelection(layerId, index, value) {
-    if (timeSelection[layerId].selection[index].selected === value)
+function f_setTimeSelection(layer, index, value) {
+    if (timeSelection[layer.id].selection[index].selected === value)
         return;
-    timeSelection[layerId].selection[index].selected = value;
-    timeSelection[layerId].filteredValues = f_filterTimeValues(layerId);
+    timeSelection[layer.id].selection[index].selected = value;
+    timeSelection[layer.id].filteredValues = f_filterTimeValues(layer);
     //change WMS timestamp, if time selection is complete
-    if (timeSelection[layerId].isComplete() === true)
-        imageOverlays[layerId].getSource().updateParams({'TIME': timeSelection[layerId].filteredValues[0].toISOString()});
+    if (timeSelection[layer.id].isComplete() === true)
+        imageOverlays[layer.id].getSource().updateParams({'TIME': timeSelection[layer.id].filteredValues[0].toISOString()});
 }
 
 /**
@@ -1097,21 +1224,21 @@ function f_jQueryEscape(selector) {
 
 /**
  * initialize current time selection
- * @param layerId layer id
+ * @param layer layer object
  * @param value Date value
  */
-function f_initTimeSelection(layerId, value) {
+function f_initTimeSelection(layer, value) {
     //get array of available years
-    timeSelection[layerId].selection[0].values = f_getDateElementArray(timeValues[layerId], timeSelection[layerId].selection[0].timeFunction);
+    timeSelection[layer.id].selection[0].values = f_getDateElementArray(timeValues[layer.id], timeSelection[layer.id].selection[0].timeFunction);
     //init default value, if input value is a valid Date
     if (value instanceof Date && !isNaN(value.valueOf())) {
-        for (var i = 0; i < timeSelection[layerId].selection.length; i++) {
-            f_updateTimeSelection(layerId, i, value[timeSelection[layerId].selection[i].timeFunction]());
+        for (var i = 0; i < timeSelection[layer.id].selection.length; i++) {
+            f_updateTimeSelection(layer.id, i, value[timeSelection[layer.id].selection[i].timeFunction]());
         }
     }
     //start with selection of year
     else
-        f_updateTimeSelection(layerId, 0, null);
+        f_updateTimeSelection(layer.id, 0, null);
 }
 
 /**
@@ -1121,10 +1248,11 @@ function f_initTimeSelection(layerId, value) {
  * @returns {Array} Date elements
  */
 function f_getDateArray(values, separator) {
-    var sArray = values.split(separator);
+	if(!Array.isArray(values))
+		values = values.split(separator);
     var dArray = [];
-    for (var i = 0; i < sArray.length; i++) {
-        var date = new Date(sArray[i]);
+    for (var i = 0; i < values.length; i++) {
+        var date = new Date(values[i]);
         if (date !== null)
             dArray.push(date);
     }
@@ -1156,17 +1284,17 @@ function f_getDateElementArray(dArray, dateFunction) {
 
 /**
  * filter current Date elements based on current selection for layer in timeSelection[layerId]
- * @param layerId layer id
+ * @param layer layer object
  * @returns {Array} filtered Date values matching the current selection
  */
-function f_filterTimeValues(layerId) {
+function f_filterTimeValues(layer) {
     var filteredValues = [];
-    for (var i = 0; i < timeValues[layerId].length; i++) {
-        var timestamp = timeValues[layerId][i];
+    for (var i = 0; i < timeValues[layer.id].length; i++) {
+        var timestamp = timeValues[layer.id][i];
         var filter = true;
-        for (var j = 0; j < timeSelection[layerId].selection.length; j++) {
-            var selected = timeSelection[layerId].selection[j].selected;
-            if (selected !== null && timestamp[timeSelection[layerId].selection[j].timeFunction]() !== selected)
+        for (var j = 0; j < timeSelection[layer.id].selection.length; j++) {
+            var selected = timeSelection[layer.id].selection[j].selected;
+            if (selected !== null && timestamp[timeSelection[layer.id].selection[j].timeFunction]() !== selected)
                 filter = false;
         }
         if (filter)
@@ -1177,29 +1305,31 @@ function f_filterTimeValues(layerId) {
 
 /**
  * update time selection for layer
- * @param layerId layer id
+ * @param layer layer object
  * @param index index for selected time sub-element
  * @param selectedValue value to be selected
  */
 function f_updateTimeSelection(layerId, index, selectedValue) {
+	//get layer
+	var layer = imageOverlays[layerId];
     //remove selection for this and higher indices
-    for (var i = index; i < timeSelection[layerId].selection.length; i++) {
-        f_unselectTime(layerId, i);
+    for (var i = index; i < timeSelection[layer.id].selection.length; i++) {
+        f_unselectTime(layer, i);
     }
     //set selected value, if there is only one element to select
-    if (selectedValue === null && timeSelection[layerId].selection[index].values.length === 1)
-        selectedValue = timeSelection[layerId].selection[index].values[0];
+    if (selectedValue === null && timeSelection[layer.id].selection[index].values.length === 1)
+        selectedValue = timeSelection[layer.id].selection[index].values[0];
     //set current selection
-    var timeSelectionDiv = $(timeSelection[layerId].selection[index].div_selector);
-    f_setTimeSelection(layerId, index, selectedValue);
+    var timeSelectionDiv = $(timeSelection[layer.id].selection[index].div_selector);
+    f_setTimeSelection(layer, index, selectedValue);
     //add child elements with possible time values
-    for (i = 0; i < timeSelection[layerId].selection[index].values.length; i++) {
-        var value = timeSelection[layerId].selection[index].values[i];
+    for (i = 0; i < timeSelection[layer.id].selection[index].values.length; i++) {
+        var value = timeSelection[layer.id].selection[index].values[i];
         if (selectedValue !== null && value !== selectedValue)
             continue;
         var valueDiv = $('<div class="time_element' +
             (value === selectedValue ? ' time_element_selected' : '') +
-            '" onclick="f_updateTimeSelection(\'' + layerId + '\',' + index + ',' + value + ')">' +
+            '" onclick="f_updateTimeSelection(\'' + layer.id + '\',' + index + ',' + (value !== selectedValue ? value : null) + ')">' +
             f_getTimeValueDisplay(index, value) +
             '</div>');
         timeSelectionDiv.append(valueDiv);
@@ -1207,38 +1337,40 @@ function f_updateTimeSelection(layerId, index, selectedValue) {
     //set style to selected
     timeSelectionDiv.parent().find('.time_label').addClass('time_label_active');
     //display child elements, if selectedValue is not null
-    if (selectedValue !== null && timeSelection[layerId].selection[index + 1] !== void 0) {
-        timeSelection[layerId].selection[index + 1].values = f_getDateElementArray(timeSelection[layerId].filteredValues, timeSelection[layerId].selection[index + 1].timeFunction);
+    if (selectedValue !== null && timeSelection[layer.id].selection[index + 1] !== void 0) {
+        timeSelection[layer.id].selection[index + 1].values = f_getDateElementArray(timeSelection[layer.id].filteredValues, timeSelection[layer.id].selection[index + 1].timeFunction);
         f_updateTimeSelection(layerId, index + 1, null);
     }
 }
 
 /**
  * set time selection to defined value
- * @param layerId id of time-enabled layer
+ * @param layer time-enabled layer
  * @param value target time value
  */
 function f_timeStep(layerId, value){
+	//get layer
+	var layer = imageOverlays[layerId];
     //first value
     if(value === -2)
-        f_initTimeSelection(layerId, timeValues[layerId]['timestamp']);
+        f_initTimeSelection(layer, timeValues[layer.id][0]);
     //last value
     else if(value === 2)
-        f_initTimeSelection(layerId, timeValues[layerId][timeValues[layerId].length - 1]);
+        f_initTimeSelection(layer, timeValues[layer.id][timeValues[layer.id].length - 1]);
     else {
         //return if current selection is incomplete
-        if(!timeSelection[layerId].isComplete)
+        if(!timeSelection[layer.id].isComplete)
             return;
         //get current value
-        var currentValue = timeSelection[layerId].filteredValues[0];
+        var currentValue = timeSelection[layer.id].filteredValues[0];
         //get index of current value in list of values
-        var index = timeValues[layerId].indexOf(currentValue);
+        var index = timeValues[layer.id].indexOf(currentValue);
         //previous value (if current selection is not the first value)
         if(value === -1 && index >= 1)
-            f_initTimeSelection(layerId, timeValues[layerId][index - 1]);
+            f_initTimeSelection(layer, timeValues[layer.id][index - 1]);
         //next value (if current selection is not the last value)
-        else if(value === 1 && index < timeValues[layerId].length - 1)
-            f_initTimeSelection(layerId, timeValues[layerId][index + 1]);
+        else if(value === 1 && index < timeValues[layer.id].length - 1)
+            f_initTimeSelection(layer, timeValues[layer.id][index + 1]);
     }
 }
 
@@ -1263,13 +1395,13 @@ function f_getTimeValueDisplay(index, value) {
 
 /**
  * unselect current time selection
- * @param layerId layer id
+ * @param layer layer object
  * @param index index for time sub-element
  */
-function f_unselectTime(layerId, index) {
-    f_setTimeSelection(layerId, index, null);
-    $(timeSelection[layerId].selection[index].div_selector).find('.time_element').remove();
-    $(timeSelection[layerId].selection[index].div_selector).parent().find('.time_label').removeClass('time_label_active');
+function f_unselectTime(layer, index) {
+    f_setTimeSelection(layer, index, null);
+    $(timeSelection[layer.id].selection[index].div_selector).find('.time_element').remove();
+    $(timeSelection[layer.id].selection[index].div_selector).parent().find('.time_label').removeClass('time_label_active');
 }
 
 /******************************************************
@@ -1279,24 +1411,27 @@ function f_unselectTime(layerId, index) {
  *****************************************************/
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", dictionaries[lang]["OL_Base_Ortho"], false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", dictionaries[lang]["OL_Base_DEM"], false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", dictionaries[lang]["OL_Base_Ortho"], false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", dictionaries[lang]["OL_Base_DEM"], false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", dictionaries[lang]["OL_WMS_RadolanSF"], false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", dictionaries[lang]["OL_WMS_RadolanRX"], false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", dictionaries[lang]["OL_WMS_RadolanFX"], false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", dictionaries[lang]["OL_WMS_RadolanSF"], false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", dictionaries[lang]["OL_WMS_RadolanRX"], false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", dictionaries[lang]["OL_WMS_RadolanFX"], false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", dictionaries[lang]["OL_WFS_CatchmentMain"], false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", dictionaries[lang]["OL_WFS_CatchmentSub"], false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", dictionaries[lang]["OL_WFS_CatchmentMain"], false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", dictionaries[lang]["OL_WFS_CatchmentSub"], false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
+f_initWFSJSONLayer("http://localhost:8082/geoserver/wfs", "test:catchments_lvl1", dictionaries[lang]["OL_WFS_CatchmentSub"], true, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
 
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", dictionaries[lang]["OL_WFS_RiverMain"], false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["blue"]));
-f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", dictionaries[lang]["OL_WFS_RiverAll"], false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["cyan"]));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", dictionaries[lang]["OL_WFS_RiverMain"], false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["blue"]));
+//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", dictionaries[lang]["OL_WFS_RiverAll"], false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["cyan"]));
 
-f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "vereint", dictionaries[lang]["OL_Sensor_Vereint"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["green"]));
-f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "student", dictionaries[lang]["OL_Sensor_Student"], false, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightGreen"]));
+//f_initOCPULayer("https://extruso.bu.tu-dresden.de/R", "RW", dictionaries[lang]["OL_WMS_RadolanRW"], false, 0.75, 'Radar Precipitation (RW) &copy; DWD. ', 5, host + "/img/Legend_RADOLAN_RW.png")
+
+//f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "vereint", dictionaries[lang]["OL_Sensor_Vereint"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["green"]));
+//f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "student", dictionaries[lang]["OL_Sensor_Student"], false, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightGreen"]));
 
 f_initSensorHubLayer("https://api.opensensorweb.de/v0", "https://search.opensensorweb.de/v0/sensor/_search", ["discharge","water level"], null, dictionaries[lang]["OL_Sensor_Gauge"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["blue"]));
 f_initSensorHubLayer("https://api.opensensorweb.de/v0", "https://search.opensensorweb.de/v0/sensor/_search", ["precipitation","relative humidity","air temperature","global radiation", "wind speed", ""], null, dictionaries[lang]["OL_Sensor_Meteo"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightBlue"]));
@@ -1502,8 +1637,8 @@ function f_refreshView() {
         if($(this).attr('class').includes("_selected"))
             $(this).trigger("click").trigger("click")
     })
-    //refresh latest measurements
-    f_setLatestMeasurements();
+    //refresh latest measurements (not older than a day = 86.400.000 ms)
+    f_setLatestMeasurements(86400000);
 }
 
 //register refresh function
@@ -1737,10 +1872,10 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
 
         }
 
-        //init RADOLAN timeseries processing
+        //init polygon-based processing
         if(["Polygon", "MultiPolygon"].indexOf(f.getGeometry().getType()) !== -1) {
 
-            //init div
+            //init processing div
             var jq_details = $('<div>', {
                 id: f.getId() + "_details"
             }).css('border-left', "10px solid white")
@@ -1753,9 +1888,15 @@ function f_getHTMLFeatureInfo(features, properties, showLayer, highlight) {
                 text: dictionaries[lang]['OL_Process']
             }).css("margin-left", "0").css("clear", "both"));
 
+            //init RADOLAN timeseries processing
             for(var interval in sensorHubIntervals) {
                 jq_details.append(f_getRADOLANTimeseriesLink(f, interval));
             }
+            
+            //init BROOK90 processing for subcatchments
+            if(f.get("GKZ") !== undefined)
+            	jq_details.append(f_getBROOK90Link(f));
+            
             jq_featureProperty.append(jq_details);
         }
 
@@ -1822,30 +1963,43 @@ function f_getSensorItem(sensor) {
 }
 
 /**
- * set latest measurements
+ * get latest measurements
  */
-function f_setLatestMeasurements(){
+function f_getLatestMeasurements(url, maxDelay, f_callback){
+	$.get({
+        url: url,
+        success: function(result) {
+            var value = result["sensor_stats"]["latest_value"];
+        	var vTime = result["sensor_stats"]["max_time"];
+        	//return, if value is undefined or latest timestamp is older than given time period
+            if(value === undefined || vTime === undefined || Date.now() - Date.parse(vTime) > maxDelay)
+                value = "OOD";
+            if(f_callback !== undefined) f_callback(value)
+            return value;
+        },
+        error: function (response) {
+            console.log(response.responseText);
+        }
+    });
+}
+
+/**
+ * set latest measurements in info frame
+ */
+function f_setLatestMeasurements(maxDelay){
     $(".sensor_latest").each(function(){
         //check if value is cached
         var id = this.id;
         if(sensorHubLatest.hasOwnProperty(this.id))
             this.innerHTML = sensorHubLatest[id];
         else {
-            $.get({
-                url: this.dataset.url,
-                id: id,
-                success: function(result) {
-                    var value = result["sensor_stats"]["latest_value"];
-                    if(value === undefined)
-                        return;
-                    if(value.length > 6) value = value.substring(0, 6);
-                    sensorHubLatest[this.id] = value;
-                    document.getElementById(this.id).innerHTML = sensorHubLatest[this.id];
-                },
-                error: function (response) {
-                    console.log(response.responseText);
-                }
-            });
+        	//define callback funtion executed once the latest value is retrieved
+        	var f_callback = function(value){
+        		if(value.length > 6) value = value.substring(0, 6);
+            	sensorHubLatest[this.id] = value;
+                document.getElementById(this.id).innerHTML = sensorHubLatest[this.id];
+        	}.bind({id: id});
+        	var value = f_getLatestMeasurements(this.dataset.url, maxDelay, f_callback)
         }
     });
 }
@@ -2076,10 +2230,13 @@ function f_getCatchmentProcessLink(device) {
                     f_clearHighlight();
                     var features = geojson.readFeatures(decodeURI(result));
                     if(features !== null && features.length === 1) {
-                        features[0].setId("catchment_" + id);
-                        features[0].layer = "Processing Results";
-                        features[0].layerId = "ProcessingResults";
-                        vectorOverlays["ProcessingResults"].getSource().addFeature(features[0]);
+                    	feature = features[0];
+                        feature.setId("catchment_" + id);
+                        feature.layer = "Processing Results";
+                        feature.layerId = "ProcessingResults";
+                        feature.getGeometry().transform(ol.proj.get("EPSG:4326"), projection)
+                        vectorOverlays["ProcessingResults"].getSource().addFeature(feature);
+                        map.getView().fit(vectorOverlays["ProcessingResults"].getSource().getExtent(), {duration: 1000});
                     }
                 });
             }).fail(function(){
@@ -2123,13 +2280,13 @@ function f_getForecastLink(sensor) {
             }
             else {
                 //request OCPU
-                var request = ocpu.call("x.octave.flood_nn", {'gauge': $(this).data('deviceCode')}, function (session) {
+                var req = ocpu.call("x.octave.flood_nn", {'gauge': $(this).data('deviceCode'), 'fcpoint': "2019-06-05 01:00:00"}, function (session) {
                     session.getObject(function (result) {
                         f_setStationForecast(id, result);
                         f_addGraph(id, sensor["code"], stationForecasts[id], forecastIntervals['6h'], phenomena["discharge prediction"]);
                     });
                 }).fail(function () {
-                    console.log("Error: " + request.responseText);
+                    console.log("Error: " + req.responseText);
                 });
             }
         }
@@ -2137,9 +2294,10 @@ function f_getForecastLink(sensor) {
 }
 
 /**
- * get link to RADOLAN Timeseries
+ * get link to RADOLAN timeseries
  * @param feature input feature
  * @param interval requested interval
+ * @return RADOLAN link
  */
 function f_getRADOLANTimeseriesLink(feature, interval) {
     var measurementId = f_escapeSelector(feature.getId() + "_RW_" + interval);
@@ -2183,12 +2341,63 @@ function f_getRADOLANTimeseriesLink(feature, interval) {
                         f_addGraph(id, "RADOLAN RW", radolanTimeseries[id], timeframe, phenomena["precipitation_sum"]);
                     });
                 }).fail(function () {
-                    console.log("Error: " + request.responseText);
+                    console.log("Error: " + req.responseText);
                 });
             }
         }
     }).data('feature', feature));
 }
+
+/**
+ * get link to BROOK90 processing
+ * @param feature input feature
+ * @return BROOK90 link
+ */
+function f_getBROOK90Link(feature){
+	return ($('<div>', {
+        'class': 'lang_t lang sensor_sym sensor_sym_process_bf',
+        'data-lang': "OL_Process_BROOK90_Abbr",
+        'data-lang-t': "OL_Process_BROOK90",
+        'data-id': feature.get("GKZ"),
+        title: dictionaries[lang]["OL_Process_BROOK90"],
+        text: dictionaries[lang]["OL_Process_BROOK90_Abbr"],
+        id: feature.get("GKZ") + "_g",
+        click: function (evt) {
+            var id = evt.target.attributes["data-id"].value;
+            var now = new Date();
+            var years = 3;
+            var timeframe = f_getInterval(new Date(new Date().setYear(now.getFullYear() - years)), now);
+            jq_graphDiv.empty();
+            //close graph, if shown already
+            if(d3Graph.activeGraph(id)){
+                f_removeGraph(id);
+                //hide graph container, if no graph is displayed
+                if(d3Graph.numberOfGraphs() === 0)
+                    f_updateGraphDiv(false);
+                return;
+            }
+            //show graph
+            f_updateGraphDiv(true);
+            //check, if measurements are available in cache
+            if(brook90Timeseries[id] !== undefined && brook90Timeseries[id].length > 0){
+                f_addGraph(id, "BROOK90", brook90Timeseries[id], timeframe, phenomena["soil moisture"]);
+            }
+            else {
+                //request OCPU
+                var req = ocpu.call("x.app.brook90", {'c.ids': id, 't.years': years}, function(session) {
+                	console.log(session)
+                    session.getObject(function(result){
+                        f_setBROOK90Measurements(id, result);
+                        f_addGraph(id, "BROOK90", brook90Timeseries[id], timeframe, phenomena["soil moisture"]);
+                    });
+                }).fail(function () {
+                    console.log("Error: " + req.responseText);
+                });
+            }
+        }
+    }));	
+}
+
 
 /**
  * add SensorHub measurements to cache
@@ -2223,6 +2432,26 @@ function f_setRADOLANMeasurements(id, ocpu) {
         })
     }
     radolanTimeseries[id] = measurements;
+
+}
+
+/**
+ * add BROOK90 measurements to cache
+ * @param id measurements identifier
+ * @param ocpu measurements from OCPU
+ */
+function f_setBROOK90Measurements(id, ocpu) {
+
+    //parse measurement values
+    var measurements = [];
+    console.log(ocpu)
+    for(var i=0; i<ocpu.length; i++){
+        measurements.push({
+            'timestamp': new Date(Date.parse(ocpu[i]['date'] + " 24:00")),
+            'value': ocpu[i][id + '_swatt_avg']
+        })
+    }
+    brook90Timeseries[id] = measurements;
 
 }
 
@@ -2496,8 +2725,8 @@ function f_updateInfoDiv(show, html) {
     //update info width
     jq_infoDiv.css("width", width + "px");
 
-    //update latest values
-    f_setLatestMeasurements();
+    //update latest values (not older than a day = 86.400.000 ms)
+    f_setLatestMeasurements(86400000);
 
     //hide graph, if !show
     if(!show) f_updateGraphDiv(false);

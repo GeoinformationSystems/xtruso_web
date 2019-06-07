@@ -2,44 +2,46 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generiert durch Microsoft Visio, SVG Export symbol_wind.svg Zeichenblatt-1 -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
-		width="1.1331in" height="0.936816in" viewBox="0 0 81.5833 67.4508" xml:space="preserve" color-interpolation-filters="sRGB"
-		class="st3">
+		width="1.26042in" height="1.26042in" viewBox="0 0 90.75 90.75" xml:space="preserve" color-interpolation-filters="sRGB"
+		class="st4">
 	<style type="text/css">
 	<![CDATA[
 		.st1 {fill:#004a82;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st2 {stroke:#004a82;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.5}
-		.st3 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+		.st3 {fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
+		.st4 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
 	</style>
 
 	<g>
 		<title>Zeichenblatt-1</title>
-		<g id="group304-1" transform="translate(0.375,-0.375)">
-			<title>Tabelle.304</title>
-			<g id="shape285-2" transform="translate(76.2666,64.2292) rotate(90) scale(-1,1)">
-				<title>Tabelle.285</title>
-				<rect x="0" y="61.0076" width="63.1908" height="6.44318" rx="3.22159" ry="3.22159" class="st1"/>
-			</g>
-			<g id="shape286-4" transform="translate(24.75,-1.13687E-013) scale(-1,1)">
-				<title>Tabelle.286</title>
-				<rect x="0" y="61.0076" width="24.75" height="6.44318" rx="3.22159" ry="3.22159" class="st1"/>
-			</g>
-			<g id="shape288-6" transform="translate(13.4179,-30.2216)">
-				<title>Tabelle.288</title>
-				<path d="M15.91 33.7 L0 49.91 L15.91 67.45" class="st2"/>
-			</g>
-			<g id="shape295-9" transform="translate(29.0833,-27.8883)">
-				<title>Tabelle.295</title>
-				<path d="M13.67 32.05 L0 28.64 L0 67.45 L13.67 63.89 L13.67 32.05 Z" class="st1"/>
-			</g>
-			<g id="shape299-11" transform="translate(47.25,-32.6192)">
-				<title>Tabelle.299</title>
-				<path d="M13.5 41.29 L0 37.91 L0 67.45 L13.5 63.94 L13.5 41.29 Z" class="st1"/>
-			</g>
-			<g id="shape302-13" transform="translate(65.25,-37.3067)">
-				<title>Tabelle.302</title>
-				<path d="M0 47.1 L0 67.45 L15.58 63.39 L15.58 50.99 L0 47.1 Z" class="st1"/>
-			</g>
+		<g id="shape285-1" transform="translate(102.286,78.1368) rotate(90) scale(-1,1)">
+			<title>Tabelle.285</title>
+			<rect x="0" y="83.8721" width="67.454" height="6.87787" rx="3.43894" ry="3.43894" class="st1"/>
+		</g>
+		<g id="shape286-3" transform="translate(28.5448,-9.17424) scale(-1,1)">
+			<title>Tabelle.286</title>
+			<rect x="0" y="83.8721" width="26.4198" height="6.87787" rx="3.43894" ry="3.43894" class="st1"/>
+		</g>
+		<g id="shape288-5" transform="translate(15.6982,-41.4347)">
+			<title>Tabelle.288</title>
+			<path d="M16.99 54.72 L0 72.02 L16.99 90.75" class="st2"/>
+		</g>
+		<g id="shape295-8" transform="translate(32.4205,-38.944)">
+			<title>Tabelle.295</title>
+			<path d="M14.59 52.97 L0 49.32 L0 90.75 L14.59 86.95 L14.59 52.97 Z" class="st1"/>
+		</g>
+		<g id="shape299-10" transform="translate(51.8127,-43.9941)">
+			<title>Tabelle.299</title>
+			<path d="M14.41 62.82 L0 59.22 L0 90.75 L14.41 87 L14.41 62.82 Z" class="st1"/>
+		</g>
+		<g id="shape302-12" transform="translate(71.0271,-48.9978)">
+			<title>Tabelle.302</title>
+			<path d="M0 69.02 L0 90.75 L16.63 86.42 L16.63 73.18 L0 69.02 Z" class="st1"/>
+		</g>
+		<g id="shape307-14" transform="translate(0.375,-0.375)">
+			<title>Tabelle.307</title>
+			<rect x="0" y="0.75" width="90" height="90" class="st3"/>
 		</g>
 	</g>
 </svg>

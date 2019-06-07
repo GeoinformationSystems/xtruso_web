@@ -2,8 +2,8 @@
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <!-- Generiert durch Microsoft Visio, SVG Export symbol_level.svg Zeichenblatt-1 -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events"
-		width="1.69729in" height="1.28646in" viewBox="0 0 122.205 92.625" xml:space="preserve" color-interpolation-filters="sRGB"
-		class="st6">
+		width="1.26042in" height="1.26042in" viewBox="0 0 90.75 90.75" xml:space="preserve" color-interpolation-filters="sRGB"
+		class="st7">
 	<style type="text/css">
 	<![CDATA[
 		.st1 {fill:#004a82;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.24}
@@ -11,85 +11,71 @@
 		.st3 {fill:#ffffff;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4.5}
 		.st4 {fill:#ffffff;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
 		.st5 {fill:#004a82;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
-		.st6 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+		.st6 {fill:none;stroke:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.75}
+		.st7 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
 	]]>
 	</style>
 
 	<g>
 		<title>Zeichenblatt-1</title>
-		<g id="group226-1" transform="translate(0.12,-2.25)">
-			<title>Tabelle.226</title>
-			<g id="group187-2" transform="translate(7.99361E-015,-41.8196)">
-				<title>Tabelle.187</title>
-				<g id="shape167-3" transform="translate(136.278,57.9446) rotate(90)">
-					<title>Kreisdiagrammbogen</title>
-					<path d="M17.27 87.54 L17.25 92.62 A17.3402 17.3402 -180 0 0 17.44 57.94 L17.41 63.03 A12.251 12.251 0 0 1 17.27
-								 87.54 Z" class="st1"/>
-				</g>
-				<g id="shape168-5" transform="translate(166.007,57.9446) rotate(90)">
-					<title>Kreisdiagrammbogen.168</title>
-					<path d="M17.41 87.54 L17.44 92.62 A17.3402 17.3402 -180 0 0 17.25 57.94 L17.27 63.03 A12.251 12.251 0 0 1 17.41
-								 87.54 Z" class="st1"/>
-				</g>
-				<g id="shape176-7" transform="translate(13.9652,-1.10468)">
-					<title>Tabelle.176</title>
-					<path d="M11.25 87.02 A12.251 12.251 0 0 1 5.09 76.32 L0 76.3 A17.3402 17.3402 -180 0 0 11.25 92.62 L11.25 87.02
-								 Z" class="st1"/>
-				</g>
-				<g id="shape178-9" transform="translate(29.7152,-2.84217E-014)">
-					<title>Tabelle.178</title>
-					<path d="M0 87.43 L0 92.55 A17.3402 17.3402 -180 0 0 18.93 75.19 L13.84 75.22 A12.251 12.251 0 0 1 -0 87.43 Z"
-							class="st1"/>
-				</g>
-				<g id="shape179-11" transform="translate(25.2152,-0.0730673)">
-					<title>Tabelle.179</title>
-					<path d="M4.5 87.51 A12.251 12.251 0 0 1 -0 85.99 L0 91.59 A17.3402 17.3402 -180 0 0 4.5 92.62 L4.5 87.51 Z"
-							class="st1"/>
-				</g>
-				<g id="shape181-13" transform="translate(103.035,-8.52651E-014)">
-					<title>Tabelle.181</title>
-					<path d="M18.93 87.43 A12.251 12.251 0 0 1 5.09 75.22 L0 75.19 A17.3402 17.3402 -180 0 0 18.93 92.55 L18.93 87.43
-								 Z" class="st1"/>
-				</g>
-				<g id="shape186-15" transform="translate(18.9304,-0.0883016) scale(-1,1)">
-					<title>Tabelle.186</title>
-					<path d="M18.93 87.43 A12.251 12.251 0 0 1 5.09 75.22 L0 75.19 A17.3402 17.3402 -180 0 0 18.93 92.55 L18.93 87.43
-								 Z" class="st1"/>
-				</g>
-			</g>
-			<g id="group196-17" transform="translate(7.99361E-015,-41.8196)">
-				<title>Tabelle.196</title>
-				<g id="shape201-18" transform="translate(25.2152,-0.0730673)">
-					<title>Tabelle.201</title>
-					<path d="M4.5 87.51 A12.251 12.251 0 0 1 -0 85.99 L0 91.59 A17.3402 17.3402 -180 0 0 4.5 92.62 L4.5 87.51 Z"
-							class="st2"/>
-				</g>
-			</g>
-			<g id="shape210-20" transform="translate(68.0316,-43.3125)">
-				<title>Tabelle.210</title>
-				<path d="M5.01 89.25 A17.3402 17.3402 0 0 1 0 92.62 L7.81 92.62 L7.81 89.25 L5.01 89.25 Z" class="st3"/>
-			</g>
-			<g id="shape211-22" transform="translate(58.9652,4.26326E-014)">
-				<title>Tabelle.211</title>
-				<path d="M14.07 45.94 L16.87 45.94 L16.87 49.31 L9.07 49.31 A17.3402 17.3402 0 0 1 -0 50.69 L0 59.44 L11.25 59.44
-							 L11.25 62.81 L0 62.81 L0 72.94 L16.87 72.94 L16.87 76.31 L0 76.31 L0 92.62 L27 92.62 L27 50.14 A17.3402
-							 17.3402 0 0 1 16.89 42.39 A17.3402 17.3402 0 0 1 14.07 45.94 Z" class="st2"/>
-			</g>
-			<g id="shape216-24" transform="translate(58.9652,-50.4445)">
-				<title>Tabelle.216</title>
-				<path d="M10.42 86.26 L0 86.26 L0 92.39 A8.71528 8.71528 -180 0 0 10.42 86.26 Z" class="st2"/>
-			</g>
-			<g id="shape219-26" transform="translate(70.0746,-59.0625)">
-				<title>Tabelle.219</title>
-				<path d="M0 91.5 L0 92.62 L11.91 92.62 A8.736 8.736 0 0 1 11.91 92.48 L8.26 92.46 L8.26 92.43 L5.78 92.45 L3.31 92.43
-							 L3.31 92.46 L0.14 92.48 L0.14 91.5 L0 91.5 Z" class="st4"/>
-			</g>
-			<g id="shape225-28" transform="translate(58.9652,-51.8328)">
-				<title>Tabelle.225</title>
-				<path d="M23.03 84.27 L23.03 85.4 L23.02 85.4 A8.736 8.736 -180 0 0 27 92.62 L27 54.46 L0 54.46 L0 70.77 L16.87 70.77
-							 L16.87 74.15 L0 74.15 L0 84.27 L11.07 84.27 L11.07 83 L23.03 83 L23.03 83.67 L23.03 84.27 Z"
-						class="st5"/>
-			</g>
+		<g id="shape167-1" transform="translate(119.501,14.8254) rotate(90)">
+			<title>Kreisdiagrammbogen</title>
+			<path d="M16.57 85.87 L16.54 90.75 A16.6343 16.6343 -180 0 0 16.73 57.48 L16.7 62.36 A11.7523 11.7523 0 0 1 16.57 85.87
+						 Z" class="st1"/>
+		</g>
+		<g id="shape168-3" transform="translate(148.02,14.8254) rotate(90)">
+			<title>Kreisdiagrammbogen.168</title>
+			<path d="M16.7 85.87 L16.73 90.75 A16.6343 16.6343 -180 0 0 16.54 57.48 L16.57 62.36 A11.7523 11.7523 0 0 1 16.7 85.87
+						 Z" class="st1"/>
+		</g>
+		<g id="shape176-5" transform="translate(0.271657,-43.7158)">
+			<title>Tabelle.176</title>
+			<path d="M10.79 85.37 A11.7523 11.7523 0 0 1 4.88 75.11 L0 75.09 A16.6343 16.6343 -180 0 0 10.79 90.75 L10.79 85.37 Z"
+					class="st1"/>
+		</g>
+		<g id="shape178-7" transform="translate(15.3805,-42.6561)">
+			<title>Tabelle.178</title>
+			<path d="M0 85.77 L0 90.68 A16.6343 16.6343 -180 0 0 18.16 74.03 L13.28 74.05 A11.7523 11.7523 0 0 1 -0 85.77 Z"
+					class="st1"/>
+		</g>
+		<g id="shape179-9" transform="translate(11.0637,-42.7262)">
+			<title>Tabelle.179</title>
+			<path d="M4.32 85.84 A11.7523 11.7523 0 0 1 0 84.38 L0 89.76 A16.6343 16.6343 -180 0 0 4.32 90.75 L4.32 85.84 Z"
+					class="st1"/>
+		</g>
+		<g id="shape201-11" transform="translate(11.0637,-42.7262)">
+			<title>Tabelle.201</title>
+			<path d="M4.32 85.84 A11.7523 11.7523 0 0 1 0 84.38 L0 89.76 A16.6343 16.6343 -180 0 0 4.32 90.75 L4.32 85.84 Z"
+					class="st2"/>
+		</g>
+		<g id="shape210-13" transform="translate(52.1371,-44.0881)">
+			<title>Tabelle.210</title>
+			<path d="M4.8 87.51 A16.6343 16.6343 0 0 1 -0 90.75 L7.49 90.75 L7.49 87.51 L4.8 87.51 Z" class="st3"/>
+		</g>
+		<g id="shape211-15" transform="translate(43.4397,-2.53888)">
+			<title>Tabelle.211</title>
+			<path d="M13.5 45.96 L16.19 45.96 L16.19 49.2 L8.7 49.2 A16.6343 16.6343 0 0 1 0 50.52 L0 58.91 L10.79 58.91 L10.79 62.15
+						 L0 62.15 L0 71.86 L16.19 71.86 L16.19 75.1 L0 75.1 L0 90.75 L25.9 90.75 L25.9 49.99 A16.6343 16.6343 0 0
+						 1 16.2 42.56 A16.6343 16.6343 0 0 1 13.5 45.96 Z" class="st2"/>
+		</g>
+		<g id="shape216-17" transform="translate(43.4397,-50.9298)">
+			<title>Tabelle.216</title>
+			<path d="M10 84.64 L0 84.64 L0 90.52 A8.36049 8.36049 -180 0 0 10 84.64 Z" class="st2"/>
+		</g>
+		<g id="shape219-19" transform="translate(54.0968,-59.197)">
+			<title>Tabelle.219</title>
+			<path d="M0 89.67 L0 90.75 L11.43 90.75 A8.38036 8.38036 0 0 1 11.43 90.61 L7.92 90.59 L7.92 90.57 L5.55 90.58 L3.17
+						 90.57 L3.17 90.59 L0.13 90.61 L0.13 89.67 L0 89.67 Z" class="st4"/>
+		</g>
+		<g id="shape225-21" transform="translate(43.4397,-52.2616)">
+			<title>Tabelle.225</title>
+			<path d="M22.09 82.74 L22.09 83.81 L22.08 83.81 A8.38036 8.38036 -180 0 0 25.9 90.75 L25.9 54.14 L0 54.14 L0 69.78 L16.19
+						 69.78 L16.19 73.02 L0 73.02 L0 82.74 L10.62 82.74 L10.62 81.52 L22.09 81.52 L22.09 82.16 L22.09 82.74 Z"
+					class="st5"/>
+		</g>
+		<g id="shape313-23" transform="translate(0.375,-0.375)">
+			<title>Tabelle.313</title>
+			<rect x="0" y="0.75" width="90" height="90" class="st6"/>
 		</g>
 	</g>
 </svg>
