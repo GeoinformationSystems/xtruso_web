@@ -46,7 +46,7 @@ var d3Graph = new D3Graph("container_graph");
 //initial view
 var projection = new ol.proj.Projection({code: 'EPSG:3857', units: 'm', axisOrientation: 'neu'});
 var center = ol.proj.transform([13.73, 51.05], ol.proj.get("EPSG:4326"), projection);
-var zoom = 16 //10;
+var zoom = 10;
 var minZoom = 8;
 var pointSize = 8;
 var clusterDistance = 40;
@@ -55,6 +55,8 @@ var sensorHubDownloadAnchors = {};
 var sensorHubMeasurementLinks = {};
 var sensorHubMeasurements = {};
 var sensorHubLatest = {};
+//max delay for latest sensor measurements (1000ms * 60 * 60 * 24)
+var sensorValueMaxDelay = 86400000;
 //array with radolan timeseries
 var radolanTimeseries = {};
 //array with BROOK90 timeseries
@@ -1411,27 +1413,26 @@ function f_unselectTime(layer, index) {
  *****************************************************/
 
 baseLayers['OpenStreetMap'] = new ol.layer.Tile({title: 'OpenStreetMap', type: 'base', source: new ol.source.OSM(), zIndex: 0});
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", dictionaries[lang]["OL_Base_Ortho"], false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
-//f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", dictionaries[lang]["OL_Base_DEM"], false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest", "sn_dop_020", dictionaries[lang]["OL_Base_Ortho"], false, 1, 'base', false, 'Orthophoto &copy; GeoSN. ', 0);
+f_initWMSLayer("https://geodienste.sachsen.de/wms_geosn_hoehe/guest", "Gelaendehoehe", dictionaries[lang]["OL_Base_DEM"], false, 1, 'base', false, 'Elevation model &copy; GeoSN. ', 0);
 
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "0", "Haupteinzugsgebiete (LfULG)", false, 0.75, '', false, 'Haupteinzugsgebiete &copy; LfULG. ', 1);
 //f_initWMSLayer("https://www.umwelt.sachsen.de/umwelt/infosysteme/wms/services/wasser/einzugsgebiete_utm", "1", "Teileinzugsgebiete (LfULG)", false, 1, '', false, 'Teileinzugsgebiete &copy; LfULG. ', 2);
 
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", dictionaries[lang]["OL_WMS_RadolanSF"], false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", dictionaries[lang]["OL_WMS_RadolanRX"], false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
-//f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", dictionaries[lang]["OL_WMS_RadolanFX"], false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:SF-Produkt", dictionaries[lang]["OL_WMS_RadolanSF"], false, 0.75, '', true, 'Radar Precipitation (SF) &copy; DWD. ', 3);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:RX-Produkt", dictionaries[lang]["OL_WMS_RadolanRX"], false, 0.75, '', true, 'Radar Reflectivity (RX) &copy; DWD. ', 5);
+f_initWMSLayer("https://maps.dwd.de/geoserver/ows", "dwd:FX-Produkt", dictionaries[lang]["OL_WMS_RadolanFX"], false, 0.75, '', true, 'Radar Reflectivity (FX) &copy; DWD. ', 4);
 
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", dictionaries[lang]["OL_WFS_CatchmentMain"], false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", dictionaries[lang]["OL_WFS_CatchmentSub"], false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
-f_initWFSJSONLayer("http://localhost:8082/geoserver/wfs", "test:catchments_lvl1", dictionaries[lang]["OL_WFS_CatchmentSub"], true, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:catchments", dictionaries[lang]["OL_WFS_CatchmentMain"], false, .3, "Haupteinzugsgebiete &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:subcatchments", dictionaries[lang]["OL_WFS_CatchmentSub"], false, .3, "Teileinzugsgebiete &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["lightBlue"]));
 
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", dictionaries[lang]["OL_WFS_RiverMain"], false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["blue"]));
-//f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", dictionaries[lang]["OL_WFS_RiverAll"], false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["cyan"]));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_main", dictionaries[lang]["OL_WFS_RiverMain"], false, 1, "Flussläufe &copy; LfULG. ", 10, 1000,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["blue"]));
+f_initWFSJSONLayer("https://extruso.bu.tu-dresden.de/geoserver/wfs", "xtruso:rivers_all", dictionaries[lang]["OL_WFS_RiverAll"], false, 1, "Gewässernetzwerk &copy; LfULG. ", 11, 100,  f_createOLStyle(['line','area'], 1, 0, true, false, colorPalette["cyan"]));
 
-//f_initOCPULayer("https://extruso.bu.tu-dresden.de/R", "RW", dictionaries[lang]["OL_WMS_RadolanRW"], false, 0.75, 'Radar Precipitation (RW) &copy; DWD. ', 5, host + "/img/Legend_RADOLAN_RW.png")
+f_initOCPULayer("https://extruso.bu.tu-dresden.de/R", "RW", dictionaries[lang]["OL_WMS_RadolanRW"], false, 0.75, 'Radar Precipitation (RW) &copy; DWD. ', 5, host + "/img/Legend_RADOLAN_RW.png")
 
-//f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "vereint", dictionaries[lang]["OL_Sensor_Vereint"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["green"]));
-//f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "student", dictionaries[lang]["OL_Sensor_Student"], false, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightGreen"]));
+f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "vereint", dictionaries[lang]["OL_Sensor_Vereint"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["green"]));
+f_initSensorHubLayer("https://api.sensorhub-tud-test.smart-rain.de/v0", null, null, "student", dictionaries[lang]["OL_Sensor_Student"], false, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightGreen"]));
 
 f_initSensorHubLayer("https://api.opensensorweb.de/v0", "https://search.opensensorweb.de/v0/sensor/_search", ["discharge","water level"], null, dictionaries[lang]["OL_Sensor_Gauge"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["blue"]));
 f_initSensorHubLayer("https://api.opensensorweb.de/v0", "https://search.opensensorweb.de/v0/sensor/_search", ["precipitation","relative humidity","air temperature","global radiation", "wind speed", ""], null, dictionaries[lang]["OL_Sensor_Meteo"], true, "Sensors &copy; SensorHub. ", 20, f_createOLStyle(["point","line"], 1, pointSize, true, undefined, colorPalette["lightBlue"]));
@@ -1638,7 +1639,7 @@ function f_refreshView() {
             $(this).trigger("click").trigger("click")
     })
     //refresh latest measurements (not older than a day = 86.400.000 ms)
-    f_setLatestMeasurements(86400000);
+    f_setLatestMeasurements();
 }
 
 //register refresh function
@@ -1965,20 +1966,34 @@ function f_getSensorItem(sensor) {
 /**
  * get latest measurements
  */
-function f_getLatestMeasurements(url, maxDelay, f_callback){
+function f_getLatestMeasurements(url, f_callback){
 	$.get({
         url: url,
         success: function(result) {
-            var value = result["sensor_stats"]["latest_value"];
-        	var vTime = result["sensor_stats"]["max_time"];
-        	//return, if value is undefined or latest timestamp is older than given time period
-            if(value === undefined || vTime === undefined || Date.now() - Date.parse(vTime) > maxDelay)
-                value = "OOD";
-            if(f_callback !== undefined) f_callback(value)
-            return value;
+        	//get latest timestamp
+        	var latestTimestamp = result["sensor_stats"]["max_time"];
+        	//request data from latest timestamp on
+        	var urlLatest = result["measurements_url"] + "/raw?" + f_getInterval(new Date(latestTimestamp), new Date())['get'] + "&includeLatest=true";
+        	$.get({
+                url: urlLatest,
+                success: function(result) {
+                	//get latest value
+                	var latest = result[result.length - 1]
+                	var latestValue = latest !== undefined ? latest["v"] : "NA";
+                	var latestTime = latest !== undefined ? latest["begin"] : "NA";
+                	// check value and return
+                	if(latestTime !== "NA" && Date.now() - Date.parse(latestTime) > sensorValueMaxDelay)
+                		latestValue = "OOD";
+                	if(f_callback !== undefined) f_callback(latestValue, latestTime)
+                    return latestValue;
+                },
+	            error: function (response) {
+	                console.log("Error in requesting latest values; " + response.responseText);
+	            }
+        	});
         },
         error: function (response) {
-            console.log(response.responseText);
+        	console.log("Error in requesting sensor stats; " + response.responseText);
         }
     });
 }
@@ -1986,7 +2001,7 @@ function f_getLatestMeasurements(url, maxDelay, f_callback){
 /**
  * set latest measurements in info frame
  */
-function f_setLatestMeasurements(maxDelay){
+function f_setLatestMeasurements(){
     $(".sensor_latest").each(function(){
         //check if value is cached
         var id = this.id;
@@ -1994,12 +2009,13 @@ function f_setLatestMeasurements(maxDelay){
             this.innerHTML = sensorHubLatest[id];
         else {
         	//define callback funtion executed once the latest value is retrieved
-        	var f_callback = function(value){
+        	var f_callback = function(value, time){
+        		value = String(value);
         		if(value.length > 6) value = value.substring(0, 6);
             	sensorHubLatest[this.id] = value;
-                document.getElementById(this.id).innerHTML = sensorHubLatest[this.id];
+            	document.getElementById(this.id).innerHTML = "<div title=" + time + ">" + value + "</div>";
         	}.bind({id: id});
-        	var value = f_getLatestMeasurements(this.dataset.url, maxDelay, f_callback)
+        	var value = f_getLatestMeasurements(this.dataset.url, f_callback)
         }
     });
 }
@@ -2280,7 +2296,7 @@ function f_getForecastLink(sensor) {
             }
             else {
                 //request OCPU
-                var req = ocpu.call("x.octave.flood_nn", {'gauge': $(this).data('deviceCode'), 'fcpoint': "2019-06-05 01:00:00"}, function (session) {
+                var req = ocpu.call("x.octave.flood_nn", {'gauge': $(this).data('deviceCode')}, function (session) {
                     session.getObject(function (result) {
                         f_setStationForecast(id, result);
                         f_addGraph(id, sensor["code"], stationForecasts[id], forecastIntervals['6h'], phenomena["discharge prediction"]);
@@ -2507,7 +2523,7 @@ function f_getSensorHubLink(sensor, measurements, interval){
     if(!measurements)
         return url;
     //add measurement request
-    return url + "/measurements/raw?" + interval['get'];
+    return url + "/measurements/raw?" + interval['get'] + "&includeLatest=true";
 }
 
 /**
@@ -2726,7 +2742,7 @@ function f_updateInfoDiv(show, html) {
     jq_infoDiv.css("width", width + "px");
 
     //update latest values (not older than a day = 86.400.000 ms)
-    f_setLatestMeasurements(86400000);
+    f_setLatestMeasurements();
 
     //hide graph, if !show
     if(!show) f_updateGraphDiv(false);
